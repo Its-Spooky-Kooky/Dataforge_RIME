@@ -107,9 +107,18 @@ function playCutoffClick() {
 }
 
 // ==============================================================================
-// WebSocket Telemetry Connection
+// WebSocket Telemetry Connection & Tab Sync
 // ==============================================================================
 let socket = null;
+let appPingInterval = null;
+const tabSyncChannel = (typeof window !== "undefined" && window.BroadcastChannel) ? new BroadcastChannel("sterilespace_sync") : null;
+
+if (tabSyncChannel) {
+  tabSyncChannel.onmessage = (event) => {
+    // Instantaneous cross-tab local update when operator speaks in another tab
+    fetchInitialState();
+  };
+}
 
 function connectWebSocket() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -121,7 +130,17 @@ function connectWebSocket() {
     wsStatus.className = "status-pill ws-badge connected";
     wsStatus.innerHTML = '<span class="status-indicator"></span><span>Telemetry Live</span>';
     addLog("SYSTEM", "Connected to laboratory telemetry server.");
+    fetchInitialState();
     fetchBenchmarkHistory();
+
+    // Render keepalive ping every 15 seconds to prevent 55s timeout
+    if (!appPingInterval) {
+      appPingInterval = setInterval(() => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          try { socket.send("ping"); } catch (e) {}
+        }
+      }, 15000);
+    }
   };
 
   socket.onmessage = (event) => {
@@ -919,5 +938,7 @@ window.addEventListener("DOMContentLoaded", () => {
   fetchInitialState();
   connectWebSocket();
   fetchBenchmarkHistory();
+  // Continuous 1.5s synchronization guarantee across all browsers and devices
+  setInterval(fetchInitialState, 1500);
 });
 

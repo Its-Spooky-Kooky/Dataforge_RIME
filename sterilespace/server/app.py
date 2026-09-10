@@ -344,8 +344,14 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
     import re
 
     # 1. IMMEDIATE BARGE-IN / ABORT CHECK
-    abort_words = ["abort", "stop", "halt", "cancel", "shut down", "kill", "wait", "hold on", "emergency"]
-    is_abort = req.simulate_interrupt or any(re.search(r"\b" + re.escape(w) + r"\b", lower_t) for w in abort_words)
+    # Only trigger emergency cutoff on global abort phrases (or when no device target is specified)
+    has_specific_target = any(k in lower_t for k in ["fan", "vent", "centrifuge", "spin", "timer", "countdown", "uv", "lamp", "pipette", "filter", "cascade"])
+    abort_words = ["abort", "halt", "emergency", "stop all", "kill all", "shut down all", "wait", "hold on"]
+    is_abort = req.simulate_interrupt or (
+        lower_t.strip() in ["abort", "stop", "halt", "abort!", "stop!", "emergency", "emergency!"]
+    ) or (
+        not has_specific_target and any(re.search(r"\b" + re.escape(w) + r"\b", lower_t) for w in abort_words)
+    )
     
     if is_abort:
         interruption_metrics = await state_manager.request_interruption("voice_command_abort")
@@ -391,13 +397,13 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
 
     # 3. CLEANROOM TIMERS & COUNTDOWN
     if "timer" in lower_t or "countdown" in lower_t or "incubate" in lower_t:
-        if any(w in lower_t for w in ["cancel", "stop", "clear", "kill"]):
+        if any(w in lower_t for w in ["cancel", "stop", "clear", "kill", "off"]):
             c_cnt = await lab_store.cancel_all_timers()
             actions_taken.append(f"Cancelled {c_cnt} active timers")
             response_phrases.append("Active cleanroom incubation timers cancelled.")
         else:
-            sec_match = re.search(r"\b([0-9]{1,4})\s*(?:sec|second|s)\b", lower_t)
-            min_match = re.search(r"\b([0-9]{1,3})\s*(?:min|minute|m)\b", lower_t)
+            sec_match = re.search(r"\b([0-9]{1,4})\s*(?:sec(?:ond)?s?|s)\b", lower_t)
+            min_match = re.search(r"\b([0-9]{1,3})\s*(?:min(?:ute)?s?|m)\b", lower_t)
             dur = 45
             if sec_match:
                 dur = int(sec_match.group(1))
@@ -412,7 +418,8 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
 
             tmr = await lab_store.add_timer(label=label, duration_sec=dur)
             actions_taken.append(f"Started {dur}s countdown timer ({label})")
-            response_phrases.append(f"Cleanroom incubation timer started for {dur} seconds for {label}.")
+            dur_disp = f"{dur // 60} minutes" if dur >= 60 and dur % 60 == 0 else f"{dur} seconds"
+            response_phrases.append(f"Cleanroom incubation timer started for {dur_disp} for {label}.")
 
     # 4. CLEANROOM PROTOCOL & SOP GUIDANCE
     if any(k in lower_t for k in ["protocol", "sop", "procedure", "how to", "guideline", "rule", "limit"]):
@@ -544,7 +551,7 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
             response_phrases.append(f"Ultraviolet decontamination cycle engaged at two hundred fifty-four nanometers for {dur_txt}. Sash safety interlock verified.")
 
     # 7. HEPA FILTER & DIFFERENTIAL PRESSURE READOUT
-    if any(k in lower_t for k in ["hepa", "filter pressure", "magnehelic", "face velocity", "differential pressure"]):
+    if any(k in lower_t for k in ["hepa", "filter", "magnehelic", "face velocity", "differential pressure"]):
         if any(k in lower_t for k in ["calibrate", "zero", "reset"]):
             h_res = await state_manager.execute_fenced_tool(
                 "calibrate_hepa_filter",

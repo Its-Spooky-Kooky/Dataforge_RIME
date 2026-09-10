@@ -131,6 +131,8 @@ async function initMicrophoneNoiseGating() {
 // ==============================================================================
 let socket = null;
 const activeTimersMap = new Map();
+const tabSyncChannel = (typeof window !== "undefined" && window.BroadcastChannel) ? new BroadcastChannel("sterilespace_sync") : null;
+let operatorPingInterval = null;
 
 function connectWebSocket() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -141,6 +143,13 @@ function connectWebSocket() {
   socket.onopen = () => {
     wsStatus.className = "status-pill ws-badge connected";
     wsStatus.innerHTML = '<span class="status-indicator"></span><span>Wall Display Synced</span>';
+    if (!operatorPingInterval) {
+      operatorPingInterval = setInterval(() => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          try { socket.send("ping"); } catch (e) {}
+        }
+      }, 15000);
+    }
   };
 
   socket.onmessage = (event) => {
@@ -286,6 +295,12 @@ async function executeVoiceCommand(transcript) {
       body: JSON.stringify({ transcript })
     });
     const result = await resp.json();
+
+    if (tabSyncChannel) {
+      try {
+        tabSyncChannel.postMessage({ type: "VOICE_TURN_EXECUTED", transcript: transcript, result: result });
+      } catch (e) {}
+    }
 
     if (result.status === "INTERRUPTED") {
       playCutoffClick();
