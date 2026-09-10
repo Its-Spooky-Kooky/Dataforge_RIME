@@ -147,6 +147,10 @@ function handleTelemetryMessage(msg) {
     renderSamples(snapshot.samples);
     updateVentilation(snapshot.ventilation);
     if (snapshot.centrifuge) updateCentrifuge(snapshot.centrifuge);
+    if (snapshot.uv_sterilization) updateUV(snapshot.uv_sterilization);
+    if (snapshot.hepa_filter) updateHepa(snapshot.hepa_filter);
+    if (snapshot.pipette) updatePipette(snapshot.pipette);
+    if (snapshot.pressure_cascade) updateCascade(snapshot.pressure_cascade);
   } else if (type === "SAMPLE_UPDATED") {
     updateSampleRow(data.record, true);
     addLog("TOOL", `Sample ${data.tube_id} updated: ${data.record.metric} = ${data.record.value} ${data.record.unit}`);
@@ -156,6 +160,18 @@ function handleTelemetryMessage(msg) {
   } else if (type === "CENTRIFUGE_CHANGED") {
     updateCentrifuge(data.centrifuge);
     addLog("TOOL", `Microcentrifuge: ${data.centrifuge.state} at ${data.centrifuge.rpm} RPM (${data.centrifuge.g_force} × g)`);
+  } else if (type === "UV_CHANGED") {
+    updateUV(data.uv_sterilization);
+    addLog("TOOL", `UV-C Sterilization: ${data.uv_sterilization.state} (254nm, ${data.uv_sterilization.duration_sec}s cycle)`);
+  } else if (type === "HEPA_CHANGED") {
+    updateHepa(data.hepa_filter);
+    addLog("TOOL", `HEPA Magnehelic: ${data.hepa_filter.differential_pressure_in_wg} in. w.g. (${data.hepa_filter.face_velocity_mps} m/s)`);
+  } else if (type === "PIPETTE_CHANGED") {
+    updatePipette(data.pipette);
+    addLog("TOOL", `Pipette Tare: ${data.pipette.active_volume_ul} µL (${data.pipette.viscosity_mode})`);
+  } else if (type === "CASCADE_CHANGED") {
+    updateCascade(data.pressure_cascade);
+    addLog("TOOL", `Air Barrier Cascade: +${data.pressure_cascade.cleanroom_pressure_pa} Pa, ${data.pressure_cascade.particle_count_0_5um}/m³ (ISO 5)`);
   } else if (type === "TOOL_STARTED") {
     playCleanroomChime();
     addLog("TOOL", `Async Tool Fenced: [${data.action}] — In-flight delay ${data.simulated_latency_sec}s`);
@@ -236,6 +252,73 @@ function handleTimerTelemetry(type, data) {
     playCleanroomChime();
     addLog("TOOL", `Voice Timer Completed: [${timer.id}] ${timer.label}`);
   }
+}
+
+// ==============================================================================
+// 4 Cleanroom Systems HUD Renderers
+// ==============================================================================
+function updateUV(uv) {
+  if (!uv) return;
+  const badge = document.getElementById("uv-state-badge");
+  const timer = document.getElementById("uv-val-timer");
+  const wl = document.getElementById("uv-val-wavelength");
+  const ir = document.getElementById("uv-val-irradiance");
+  if (badge) {
+    badge.innerText = uv.state;
+    badge.className = `badge-state ${uv.state === 'ACTIVE' ? 'state-running' : 'state-off'}`;
+  }
+  if (timer) timer.innerText = `${uv.time_remaining_sec || 0}s`;
+  if (wl) wl.innerText = `${uv.wavelength_nm || 254} nm`;
+  if (ir) ir.innerText = `${uv.irradiance_uw_cm2 || 42.5} µW/cm²`;
+}
+
+function updateHepa(hepa) {
+  if (!hepa) return;
+  const badge = document.getElementById("hepa-state-badge");
+  const inwg = document.getElementById("hepa-val-inwg");
+  const pa = document.getElementById("hepa-val-pa");
+  const vel = document.getElementById("hepa-val-velocity");
+  const health = document.getElementById("hepa-val-health");
+  if (badge) {
+    badge.innerText = hepa.loading_status || "NOMINAL";
+    badge.className = "badge-state state-normal";
+  }
+  if (inwg) inwg.innerText = `${hepa.differential_pressure_in_wg} in. w.g.`;
+  if (pa) pa.innerText = `${hepa.differential_pressure_pa} Pa`;
+  if (vel) vel.innerText = `${hepa.face_velocity_mps} m/s`;
+  if (health) health.innerText = `${hepa.filter_health_percent}%`;
+}
+
+function updatePipette(p) {
+  if (!p) return;
+  const badge = document.getElementById("pipette-state-badge");
+  const vol = document.getElementById("pipette-val-vol");
+  const visc = document.getElementById("pipette-val-visc");
+  const total = document.getElementById("pipette-val-total");
+  if (badge) {
+    badge.innerText = p.tare_status || "CALIBRATED";
+    badge.className = "badge-state state-optimal";
+  }
+  if (vol) vol.innerText = `${p.active_volume_ul} µL`;
+  if (visc) visc.innerText = p.viscosity_mode || "AQUEOUS";
+  if (total) total.innerText = `${p.total_dispensed_ul.toLocaleString()} µL`;
+}
+
+function updateCascade(c) {
+  if (!c) return;
+  const badge = document.getElementById("cascade-state-badge");
+  const clean = document.getElementById("cascade-val-clean");
+  const grad = document.getElementById("cascade-val-gradient");
+  const part = document.getElementById("cascade-val-particles");
+  const seal = document.getElementById("cascade-val-seal");
+  if (badge) {
+    badge.innerText = c.iso_class || "ISO CLASS 5";
+    badge.className = "badge-state state-optimal";
+  }
+  if (clean) clean.innerText = `+${c.cleanroom_pressure_pa} Pa`;
+  if (grad) grad.innerText = `+${c.cascade_gradient_pa} Pa`;
+  if (part) part.innerText = `${c.particle_count_0_5um} /m³`;
+  if (seal) seal.innerText = c.barrier_seal || "HERMETIC";
 }
 
 // ==============================================================================
@@ -810,6 +893,18 @@ async function fetchInitialState() {
       }
       if (snapshot.centrifuge) {
         updateCentrifuge(snapshot.centrifuge);
+      }
+      if (snapshot.uv_sterilization) {
+        updateUV(snapshot.uv_sterilization);
+      }
+      if (snapshot.hepa_filter) {
+        updateHepa(snapshot.hepa_filter);
+      }
+      if (snapshot.pipette) {
+        updatePipette(snapshot.pipette);
+      }
+      if (snapshot.pressure_cascade) {
+        updateCascade(snapshot.pressure_cascade);
       }
       if (snapshot.timers && snapshot.timers.length > 0) {
         snapshot.timers.forEach(t => handleTimerTelemetry("TIMER_TICK", { timer: t }));

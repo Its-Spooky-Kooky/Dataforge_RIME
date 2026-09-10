@@ -1826,6 +1826,79 @@ body.cleanroom-theme {
 }
 
 /* ==============================================================================
+   Cleanroom Systems Grid (UV-C, HEPA, Pipette, Cascade)
+   ============================================================================== */
+.systems-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.system-card {
+  padding: 1rem 1.15rem;
+  background: rgba(13, 19, 31, 0.7);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.system-card:hover {
+  border-color: rgba(0, 229, 255, 0.35);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.12);
+}
+
+.system-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.metric-mini {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mini-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  letter-spacing: 0.4px;
+}
+
+.mini-val {
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #ffffff;
+}
+
+.interlock-safe {
+  color: var(--accent-green) !important;
+}
+
+.badge-state.state-running {
+  background: rgba(179, 136, 255, 0.2);
+  color: var(--accent-purple);
+  border: 1px solid var(--accent-purple);
+  box-shadow: 0 0 10px rgba(179, 136, 255, 0.3);
+  animation: pulsePurp 1.5s infinite ease-in-out;
+}
+
+@keyframes pulsePurp {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ==============================================================================
    Responsive Queries
    ============================================================================== */
 @media (max-width: 1024px) {
@@ -1833,6 +1906,9 @@ body.cleanroom-theme {
     grid-template-columns: 1fr;
   }
   .equipment-grid {
+    grid-template-columns: 1fr;
+  }
+  .systems-grid {
     grid-template-columns: 1fr;
   }
   .guide-grid {

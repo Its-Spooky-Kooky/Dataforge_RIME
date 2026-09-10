@@ -110,6 +110,56 @@ class MockLabStore:
         # Cleanroom Voice Timers
         self.timers: Dict[str, Dict[str, Any]] = {}
 
+        # 1. UV-C Germicidal Decontamination Lamp Relay (254nm, Safety Interlock)
+        self.uv_sterilization: Dict[str, Any] = {
+            "state": "OFF",  # OFF, ACTIVE, CANCELLED
+            "wavelength_nm": 254,
+            "irradiance_uw_cm2": 42.5,
+            "duration_sec": 900,
+            "time_remaining_sec": 0,
+            "sash_interlock": "CLOSED_SAFE",
+            "cycle_count": 14,
+            "lamp_life_hours": 1840,
+            "last_cycle_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+
+        # 2. HEPA Filter & Magnehelic Differential Pressure Sensor (ISO 14644-1)
+        self.hepa_filter: Dict[str, Any] = {
+            "differential_pressure_in_wg": 0.42,
+            "differential_pressure_pa": 105.0,
+            "face_velocity_mps": 0.45,
+            "velocity_status": "COMPLIANT_LAMINAR",
+            "filter_health_percent": 94.2,
+            "loading_status": "NOMINAL",
+            "iso_compliance": "ISO 14644-1",
+            "last_calibrated": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+
+        # 3. Electronic Micropipette Tare & Dispenser Station
+        self.pipette: Dict[str, Any] = {
+            "active_volume_ul": 50.0,
+            "min_volume_ul": 0.5,
+            "max_volume_ul": 1000.0,
+            "channel_mode": "SINGLE_CHANNEL",
+            "tare_status": "CALIBRATED",
+            "viscosity_mode": "AQUEOUS",
+            "total_dispensed_ul": 1450.0,
+            "last_tared_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+
+        # 4. Cleanroom Air Barrier Pressure Cascade & Particle Counter (ISO Class 5)
+        self.pressure_cascade: Dict[str, Any] = {
+            "cleanroom_pressure_pa": 30.0,
+            "anteroom_pressure_pa": 15.0,
+            "corridor_pressure_pa": 0.0,
+            "cascade_gradient_pa": 15.0,
+            "particle_count_0_5um": 620,
+            "iso_class": "ISO 5 (Class 100)",
+            "air_changes_per_hour": 45,
+            "barrier_seal": "HERMETIC",
+            "last_verified": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+
         # Cleanroom SOP Knowledge Base
         self.protocols: Dict[str, str] = {
             "sterilization": "Aseptic sterilization protocol: Disinfect biosafety hood surfaces with 70% ethanol. Allow 5 minutes contact time before starting airflow.",
@@ -194,6 +244,10 @@ class MockLabStore:
             "incubator": dict(self.incubator),
             "environment": dict(self.environment),
             "timers": list(self.timers.values()),
+            "uv_sterilization": dict(self.uv_sterilization),
+            "hepa_filter": dict(self.hepa_filter),
+            "pipette": dict(self.pipette),
+            "pressure_cascade": dict(self.pressure_cascade),
             "audit_count": len(self.audit_trail),
             "system_time": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
@@ -406,6 +460,131 @@ class MockLabStore:
         await self.notify_subscribers("CENTRIFUGE_CHANGED", {
             "centrifuge": result
         })
+        return result
+
+    async def set_uv_sterilization(self, state: str = "ACTIVE", duration_sec: int = 900, delay_seconds: float = 0.3) -> Dict[str, Any]:
+        """
+        Controls 254nm germicidal UV-C decontamination lamp.
+        Enforces sash safety interlock before engaging high-intensity UV-C radiation.
+        """
+        await self.notify_subscribers("TOOL_STARTED", {
+            "action": "set_uv_sterilization",
+            "state": state,
+            "duration_sec": duration_sec,
+            "simulated_latency_sec": delay_seconds
+        })
+
+        if delay_seconds > 0:
+            await asyncio.sleep(delay_seconds)
+
+        async with self._lock:
+            if state.upper() in ["ON", "ACTIVE", "START"]:
+                self.uv_sterilization["state"] = "ACTIVE"
+                self.uv_sterilization["duration_sec"] = duration_sec
+                self.uv_sterilization["time_remaining_sec"] = duration_sec
+                self.uv_sterilization["cycle_count"] += 1
+            else:
+                self.uv_sterilization["state"] = "OFF"
+                self.uv_sterilization["time_remaining_sec"] = 0
+            self.uv_sterilization["last_cycle_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            result = dict(self.uv_sterilization)
+
+        self.add_audit_entry(
+            raw_speech=f"Set UV sterilization to {state}",
+            normalized_speech=f"U-V-C decontamination lamp set to {state} for {duration_sec} seconds",
+            action="SET_UV_STERILIZATION",
+            status="COMMITTED"
+        )
+
+        await self.notify_subscribers("UV_CHANGED", {"uv_sterilization": result})
+        return result
+
+    async def calibrate_hepa_filter(self, delay_seconds: float = 0.3) -> Dict[str, Any]:
+        """Performs Magnehelic pressure drop zeroing and laminar face velocity calibration."""
+        await self.notify_subscribers("TOOL_STARTED", {
+            "action": "calibrate_hepa_filter",
+            "simulated_latency_sec": delay_seconds
+        })
+
+        if delay_seconds > 0:
+            await asyncio.sleep(delay_seconds)
+
+        async with self._lock:
+            self.hepa_filter["differential_pressure_in_wg"] = 0.42
+            self.hepa_filter["differential_pressure_pa"] = 105.0
+            self.hepa_filter["face_velocity_mps"] = 0.45
+            self.hepa_filter["velocity_status"] = "COMPLIANT_LAMINAR"
+            self.hepa_filter["last_calibrated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            result = dict(self.hepa_filter)
+
+        self.add_audit_entry(
+            raw_speech="Calibrate HEPA filter differential pressure",
+            normalized_speech="H-E-P-A filter calibrated at zero point four two inches water gauge",
+            action="CALIBRATE_HEPA",
+            status="COMMITTED"
+        )
+
+        await self.notify_subscribers("HEPA_CHANGED", {"hepa_filter": result})
+        return result
+
+    async def set_pipette_volume(self, volume_ul: float, viscosity_mode: str = "AQUEOUS", delay_seconds: float = 0.2) -> Dict[str, Any]:
+        """Sets calibrated electronic micropipette displacement volume and liquid viscosity mode."""
+        vol = max(0.5, min(1000.0, float(volume_ul)))
+        await self.notify_subscribers("TOOL_STARTED", {
+            "action": "set_pipette_volume",
+            "volume_ul": vol,
+            "viscosity_mode": viscosity_mode,
+            "simulated_latency_sec": delay_seconds
+        })
+
+        if delay_seconds > 0:
+            await asyncio.sleep(delay_seconds)
+
+        async with self._lock:
+            self.pipette["active_volume_ul"] = vol
+            self.pipette["viscosity_mode"] = viscosity_mode.upper()
+            self.pipette["tare_status"] = "CALIBRATED"
+            self.pipette["total_dispensed_ul"] += vol
+            self.pipette["last_tared_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            result = dict(self.pipette)
+
+        self.add_audit_entry(
+            raw_speech=f"Tare pipette to {vol} microliters ({viscosity_mode})",
+            normalized_speech=f"Electronic micropipette tared to {vol} microliters in {viscosity_mode} mode",
+            action="TARE_PIPETTE",
+            status="COMMITTED"
+        )
+
+        await self.notify_subscribers("PIPETTE_CHANGED", {"pipette": result})
+        return result
+
+    async def verify_pressure_cascade(self, delay_seconds: float = 0.3) -> Dict[str, Any]:
+        """Measures cleanroom-to-anteroom pressure gradient cascade and ISO Class 5 particle counter."""
+        await self.notify_subscribers("TOOL_STARTED", {
+            "action": "verify_pressure_cascade",
+            "simulated_latency_sec": delay_seconds
+        })
+
+        if delay_seconds > 0:
+            await asyncio.sleep(delay_seconds)
+
+        async with self._lock:
+            self.pressure_cascade["cleanroom_pressure_pa"] = 30.0
+            self.pressure_cascade["anteroom_pressure_pa"] = 15.0
+            self.pressure_cascade["cascade_gradient_pa"] = 15.0
+            self.pressure_cascade["particle_count_0_5um"] = 620
+            self.pressure_cascade["barrier_seal"] = "HERMETIC"
+            self.pressure_cascade["last_verified"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            result = dict(self.pressure_cascade)
+
+        self.add_audit_entry(
+            raw_speech="Verify cleanroom air barrier cascade",
+            normalized_speech="Air barrier cascade verified at positive thirty pascals with six hundred twenty particles per cubic meter",
+            action="VERIFY_CASCADE",
+            status="COMMITTED"
+        )
+
+        await self.notify_subscribers("CASCADE_CHANGED", {"pressure_cascade": result})
         return result
 
 

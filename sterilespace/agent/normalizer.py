@@ -79,6 +79,10 @@ class LabPhoneticNormalizer:
             r"\bDMSO\b": "D-M-S-O",
             r"\bBSL-([1-4])\b": r"B-S-L \1",
             r"\bOD600\b": "O-D six hundred",
+            r"\bUV-C\b": "U-V-C",
+            r"\bUV\b": "U-V",
+            r"\bHEPA\b": "H-E-P-A",
+            r"\bISO\b": "I-S-O",
         }
 
     def normalize_tube_ids(self, text: str) -> str:
@@ -205,6 +209,54 @@ class LabPhoneticNormalizer:
             return f"{words} milligrams per {unit_name}"
 
         text = re.sub(r"\b([0-9]+(?:\.[0-9]+)?)\s*mg/(mL|dL|ml|dl)\b", conc_repl, text)
+
+        # Differential pressure: in. w.g., in.w.g., in wg
+        def in_wg_repl(match):
+            num_str = match.group(1)
+            words = decimal_to_words(num_str) if "." in num_str else number_to_words(int(num_str))
+            return f"{words} inches of water gauge"
+
+        text = re.sub(r"\b([0-9]+(?:\.[0-9]+)?)\s*(?:in\.?\s*w\.?g\.?|inches\s*w\.?g\.?)\b", in_wg_repl, text, flags=re.IGNORECASE)
+
+        # Pressure: Pa or Pascals
+        def pa_repl(match):
+            num_str = match.group(1)
+            words = decimal_to_words(num_str) if "." in num_str else number_to_words(int(num_str))
+            return f"{words} pascals"
+
+        text = re.sub(r"\b([0-9]+(?:\.[0-9]+)?)\s*(?:Pa|pascals)\b", pa_repl, text)
+
+        # Velocity: m/s or meters per second
+        def mps_repl(match):
+            num_str = match.group(1)
+            words = decimal_to_words(num_str) if "." in num_str else number_to_words(int(num_str))
+            return f"{words} meters per second"
+
+        text = re.sub(r"\b([0-9]+(?:\.[0-9]+)?)\s*(?:m/s|mps)\b", mps_repl, text, flags=re.IGNORECASE)
+
+        # Wavelength: nm or nanometers
+        def nm_repl(match):
+            num_str = match.group(1)
+            words = decimal_to_words(num_str) if "." in num_str else number_to_words(int(num_str))
+            return f"{words} nanometers"
+
+        text = re.sub(r"\b([0-9]+(?:\.[0-9]+)?)\s*(?:nm|nanometers)\b", nm_repl, text, flags=re.IGNORECASE)
+
+        # Irradiance: µW/cm², uW/cm2
+        def irrad_repl(match):
+            num_str = match.group(1)
+            words = decimal_to_words(num_str) if "." in num_str else number_to_words(int(num_str))
+            return f"{words} microwatts per square centimeter"
+
+        text = re.sub(r"\b([0-9]+(?:\.[0-9]+)?)\s*(?:µW/cm²|uW/cm2|uW/cm\^2)\b", irrad_repl, text)
+
+        # Particle concentration: particles/m³, particles/m3
+        def particle_repl(match):
+            num_str = match.group(1)
+            words = decimal_to_words(num_str) if "." in num_str else number_to_words(int(num_str))
+            return f"{words} particles per cubic meter"
+
+        text = re.sub(r"\b([0-9]+(?:\.[0-9]+)?)\s*(?:particles/m³|particles/m3|particles/cu\.?m\.?)\b", particle_repl, text, flags=re.IGNORECASE)
 
         # General decimal numbers like 0.8 -> zero point eight
         def dec_repl(match):

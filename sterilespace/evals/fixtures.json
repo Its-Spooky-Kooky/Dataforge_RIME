@@ -23,6 +23,22 @@
     {
       "input": "Sample T7 shows OD600 of 0.8 with 5mL PBS.",
       "expected_contains": ["tee-seven", "O-D six hundred", "zero point eight", "five milliliters", "P-B-S"]
+    },
+    {
+      "input": "Start UV-C cycle at 254nm for 15 min.",
+      "expected_contains": ["U-V-C", "two hundred fifty-four nanometers", "fifteen minutes"]
+    },
+    {
+      "input": "HEPA differential pressure at 0.42 in. w.g. with 0.45 m/s.",
+      "expected_contains": ["H-E-P-A", "zero point four two inches of water gauge", "zero point four five meters per second"]
+    },
+    {
+      "input": "Tare pipette to 50µL in aqueous mode.",
+      "expected_contains": ["fifty microliters"]
+    },
+    {
+      "input": "Cascade at 30 Pa and 620 particles/m³.",
+      "expected_contains": ["thirty pascals", "six hundred twenty particles per cubic meter"]
     }
   ],
   "compound_commands": [

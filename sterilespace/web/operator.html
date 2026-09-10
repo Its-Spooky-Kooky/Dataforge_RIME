@@ -117,27 +117,9 @@
         </div>
       </div>
 
-      <!-- Direct Spoken Command Input Bar & Quick Voice Simulation Chips -->
-      <div class="voice-input-section">
-        <div class="voice-input-row">
-          <input type="text" id="manual-voice-input" class="voice-text-input" placeholder="Speak into mic or type e.g. 'fan high', 'centrifuge 12000 RPM', 'set timer 30s'...">
-          <button id="btn-send-voice" class="voice-send-btn">
-            <span>Send Turn ↵</span>
-          </button>
-        </div>
-        <div class="quick-chips-row">
-          <button class="voice-chip-btn" data-cmd="Fan high">🌀 Fan High</button>
-          <button class="voice-chip-btn" data-cmd="Fan off">🌀 Fan Off</button>
-          <button class="voice-chip-btn" data-cmd="Spin microcentrifuge at 12000 RPM for 45 seconds">⚡ Spin 12000 RPM</button>
-          <button class="voice-chip-btn" data-cmd="Set timer for 30 seconds">⏱️ Timer 30s</button>
-          <button class="voice-chip-btn" data-cmd="Log 15% oxidation on tube 4B">🧪 Log 4B</button>
-          <button class="voice-chip-btn chip-abort" data-cmd="ABORT!">🛑 ABORT!</button>
-        </div>
-      </div>
-
-      <!-- Spoken Command Reference Guide -->
+      <!-- Spoken Command Reference Guide (100% Voice-Driven Only) -->
       <div class="voice-guide-section">
-        <span class="guide-title">SPOKEN CLEANROOM COMMAND REFERENCE:</span>
+        <span class="guide-title">SPOKEN CLEANROOM VOICE COMMAND REFERENCE:</span>
         <div class="guide-grid">
           <div class="guide-item">
             <span class="guide-cmd">"Fan high" / "Fan off"</span>
@@ -148,20 +130,36 @@
             <span class="guide-desc">Accelerates 14,000 RPM microcentrifuge rotor (13,684 × g)</span>
           </div>
           <div class="guide-item">
+            <span class="guide-cmd">"Start UV cycle for 15 minutes"</span>
+            <span class="guide-desc">✨ NEW: Engages 254nm germicidal UV-C decontamination with safety interlock</span>
+          </div>
+          <div class="guide-item">
+            <span class="guide-cmd">"Check HEPA filter pressure"</span>
+            <span class="guide-desc">✨ NEW: Readout of Magnehelic differential pressure (in. w.g.) and face velocity</span>
+          </div>
+          <div class="guide-item">
+            <span class="guide-cmd">"Tare pipette to 50 microliters"</span>
+            <span class="guide-desc">✨ NEW: Calibrates electronic dispenser volume and viscosity profile</span>
+          </div>
+          <div class="guide-item">
+            <span class="guide-cmd">"Check pressure cascade"</span>
+            <span class="guide-desc">✨ NEW: Verifies ISO Class 5 airlock gradient &amp; particle count</span>
+          </div>
+          <div class="guide-item">
             <span class="guide-cmd">"Set timer for 45 seconds"</span>
             <span class="guide-desc">Starts hands-free incubation timer with Rime audio alert</span>
           </div>
           <div class="guide-item">
             <span class="guide-cmd">"Log 15% oxidation on tube 4B"</span>
-            <span class="guide-desc">Commits sample observation into database inventory</span>
+            <span class="guide-desc">Commits sample observation into 21 CFR Part 11 database</span>
           </div>
           <div class="guide-item">
             <span class="guide-cmd">"Cleanroom status"</span>
-            <span class="guide-desc">Reports ambient temperature, pressure, and containment</span>
+            <span class="guide-desc">Reports cabinet ventilation, temperature, and containment</span>
           </div>
           <div class="guide-item guide-emergency">
             <span class="guide-cmd">"ABORT!" / "STOP!"</span>
-            <span class="guide-desc">Sub-180ms cancellation fence stops all actions &amp; locks brake</span>
+            <span class="guide-desc">Sub-180ms cancellation fence stops all actions &amp; electronic brake</span>
           </div>
         </div>
       </div>

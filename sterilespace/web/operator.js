@@ -577,46 +577,8 @@ if (btnMicOrb) {
   });
 }
 
-// Wire up Manual Voice Turn Input & Quick Simulation Chips
-const manualVoiceInput = document.getElementById("manual-voice-input");
-const btnSendVoice = document.getElementById("btn-send-voice");
-
-function sendManualVoiceTurn() {
-  if (!manualVoiceInput) return;
-  const val = manualVoiceInput.value.trim();
-  if (!val) return;
-  manualVoiceInput.value = "";
-  executeVoiceCommand(val);
-}
-
-if (btnSendVoice) {
-  btnSendVoice.addEventListener("click", (e) => {
-    e.preventDefault();
-    sendManualVoiceTurn();
-  });
-}
-
-if (manualVoiceInput) {
-  manualVoiceInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      sendManualVoiceTurn();
-    }
-  });
-}
-
-// Wire up Quick Test Chips
-document.querySelectorAll(".voice-chip-btn").forEach((btn) => {
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    const cmd = btn.getAttribute("data-cmd");
-    if (cmd) {
-      executeVoiceCommand(cmd);
-    }
-  });
-});
-
 window.addEventListener("DOMContentLoaded", () => {
   connectWebSocket();
   if (btnMicOrb) btnMicOrb.classList.add("tap-ready");
 });
+

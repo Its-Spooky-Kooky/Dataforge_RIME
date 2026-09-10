@@ -362,8 +362,12 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
             "message": "User commanded immediate stop: pending actions cancelled with zero dirty writes."
         }
 
-    # 2. STATUS / QUERY COMMANDS
-    if any(k in lower_t for k in ["status", "report", "readout", "how is", "check", "temperature", "condition"]):
+    # 2. STATUS / QUERY COMMANDS (Only for general cleanroom telemetry)
+    is_general_status = (
+        any(k in lower_t for k in ["cleanroom status", "lab status", "general status", "telemetry report", "system status", "environment status", "temperature", "condition"])
+        or (any(k in lower_t for k in ["status", "report", "readout"]) and not any(k in lower_t for k in ["hepa", "filter", "cascade", "particle", "pipette", "uv", "fan", "vent", "centrifuge", "timer"]))
+    )
+    if is_general_status:
         snap = lab_store.get_snapshot()
         v = snap["ventilation"]
         c = snap["centrifuge"]
@@ -513,8 +517,87 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
         actions_taken.append(f"Logged {metric} {value}{unit} for tube {tube_id}")
         response_phrases.append(f"Observation logged for tube {tube_id}: {metric} is {value} {unit}.")
 
+    # 6. UV-C GERMICIDAL DECONTAMINATION RELAY
+    if any(k in lower_t for k in ["uv", "ultraviolet", "decontaminate", "germicidal"]):
+        is_uv_off = any(k in lower_t for k in ["off", "stop", "cancel", "shutdown", "disable", "kill"])
+        if is_uv_off:
+            uv_res = await lab_store.set_uv_sterilization(state="OFF", duration_sec=0)
+            actions_taken.append("UV-C decontamination lamp turned OFF")
+            response_phrases.append("Ultraviolet germicidal lamp is now OFF.")
+        else:
+            sec_m = re.search(r"\b([0-9]{1,4})\s*(?:sec|second|s)\b", lower_t)
+            min_m = re.search(r"\b([0-9]{1,3})\s*(?:min|minute|m)\b", lower_t)
+            uv_dur = 900
+            if sec_m:
+                uv_dur = int(sec_m.group(1))
+            elif min_m:
+                uv_dur = int(min_m.group(1)) * 60
+            uv_res = await state_manager.execute_fenced_tool(
+                "set_uv_sterilization",
+                lab_store.set_uv_sterilization,
+                state="ACTIVE",
+                duration_sec=uv_dur,
+                delay_seconds=0.3
+            )
+            actions_taken.append(f"UV-C decontamination active for {uv_dur}s (254nm, {uv_res['irradiance_uw_cm2']} µW/cm²)")
+            dur_txt = f"{uv_dur // 60} minutes" if uv_dur >= 60 else f"{uv_dur} seconds"
+            response_phrases.append(f"Ultraviolet decontamination cycle engaged at two hundred fifty-four nanometers for {dur_txt}. Sash safety interlock verified.")
+
+    # 7. HEPA FILTER & DIFFERENTIAL PRESSURE READOUT
+    if any(k in lower_t for k in ["hepa", "filter pressure", "magnehelic", "face velocity", "differential pressure"]):
+        if any(k in lower_t for k in ["calibrate", "zero", "reset"]):
+            h_res = await state_manager.execute_fenced_tool(
+                "calibrate_hepa_filter",
+                lab_store.calibrate_hepa_filter,
+                delay_seconds=0.3
+            )
+            actions_taken.append("Calibrated HEPA differential pressure and laminar velocity")
+            response_phrases.append(f"H-E-P-A filter calibrated. Differential pressure is {h_res['differential_pressure_in_wg']} in. w.g. with laminar face velocity {h_res['face_velocity_mps']} m/s.")
+        else:
+            h = lab_store.hepa_filter
+            actions_taken.append("Reported HEPA differential pressure and laminar airflow")
+            response_phrases.append(f"H-E-P-A filter differential pressure is {h['differential_pressure_in_wg']} in. w.g., {int(h['differential_pressure_pa'])} pascals. Laminar face velocity is {h['face_velocity_mps']} m/s. Status is {h['loading_status']}.")
+
+    # 8. ELECTRONIC MICROPIPETTE TARE & VOLUME DISPENSER
+    if any(k in lower_t for k in ["pipette", "micropipette", "tare", "dispenser", "dispense"]) and not any(k in lower_t for k in ["fan", "centrifuge"]):
+        vol_m = re.search(r"\b([0-9]+(?:\.[0-9]+)?)\s*(?:µl|ul|microliter|microlitres|microliters)?\b", lower_t)
+        vol = 50.0
+        if vol_m:
+            try:
+                parsed_v = float(vol_m.group(1))
+                if 0.5 <= parsed_v <= 1000.0:
+                    vol = parsed_v
+            except ValueError:
+                pass
+
+        visc = "AQUEOUS"
+        if "ethanol" in lower_t or "etoh" in lower_t:
+            visc = "ETHANOL"
+        elif "glycerol" in lower_t or "viscous" in lower_t:
+            visc = "GLYCEROL"
+
+        p_res = await state_manager.execute_fenced_tool(
+            "set_pipette_volume",
+            lab_store.set_pipette_volume,
+            volume_ul=vol,
+            viscosity_mode=visc,
+            delay_seconds=0.3
+        )
+        actions_taken.append(f"Pipette tared to {vol} µL ({visc})")
+        response_phrases.append(f"Electronic micropipette calibrated and set to {vol} microliters in {visc.lower()} mode.")
+
+    # 9. CLEANROOM AIR BARRIER CASCADE & ISO 5 PARTICLE COUNTER
+    if any(k in lower_t for k in ["cascade", "particle", "air barrier", "airlock", "particle count", "iso class", "cleanroom pressure"]):
+        c_res = await state_manager.execute_fenced_tool(
+            "verify_pressure_cascade",
+            lab_store.verify_pressure_cascade,
+            delay_seconds=0.3
+        )
+        actions_taken.append(f"Verified pressure cascade (+{c_res['cleanroom_pressure_pa']} Pa) & particle count ({c_res['particle_count_0_5um']}/m³)")
+        response_phrases.append(f"Cleanroom pressure cascade verified at positive {int(c_res['cleanroom_pressure_pa'])} pascals with {int(c_res['cascade_gradient_pa'])} pascal anteroom gradient. Particle count is {c_res['particle_count_0_5um']} particles per cubic meter, conforming to {c_res['iso_class']}.")
+
     if not actions_taken:
-        response_phrases.append("SterileSpace standing by. Command biosafety fan, centrifuge, or sample observation.")
+        response_phrases.append("SterileSpace standing by. Command UV decontamination, HEPA pressure, pipette tare, pressure cascade, biosafety fan, or centrifuge.")
 
     combined_response = " ".join(response_phrases)
     normalized_response = normalize_for_rime(combined_response)

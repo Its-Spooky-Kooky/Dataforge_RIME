@@ -224,6 +224,125 @@
         </div>
       </div>
 
+      <!-- 4 Cleanroom Systems: UV-C Sterilization, HEPA Filter, Pipette Station, Air Barrier Cascade -->
+      <div class="systems-grid">
+        <!-- System 1: UV-C Decontamination Lamp -->
+        <div class="lab-card system-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="section-icon">🟣</span>
+              <h2>UV-C Lamp</h2>
+            </div>
+            <span id="uv-state-badge" class="badge-state state-off">OFF</span>
+          </div>
+          <div class="system-metrics">
+            <div class="metric-mini">
+              <span class="mini-label">Wavelength</span>
+              <span class="mini-val" id="uv-val-wavelength">254 nm</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Irradiance</span>
+              <span class="mini-val" id="uv-val-irradiance">42.5 µW/cm²</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Timer</span>
+              <span class="mini-val" id="uv-val-timer">0s</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Sash Interlock</span>
+              <span class="mini-val interlock-safe" id="uv-val-interlock">LOCKED SAFE</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- System 2: HEPA Filter & Magnehelic Gauge -->
+        <div class="lab-card system-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="section-icon">💨</span>
+              <h2>HEPA Gauge</h2>
+            </div>
+            <span id="hepa-state-badge" class="badge-state state-normal">NOMINAL</span>
+          </div>
+          <div class="system-metrics">
+            <div class="metric-mini">
+              <span class="mini-label">Diff Pressure</span>
+              <span class="mini-val" id="hepa-val-inwg">0.42 in. w.g.</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Drop (Pa)</span>
+              <span class="mini-val" id="hepa-val-pa">105 Pa</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Face Velocity</span>
+              <span class="mini-val" id="hepa-val-velocity">0.45 m/s</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Filter Health</span>
+              <span class="mini-val" id="hepa-val-health">94.2%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- System 3: Electronic Micropipette Tare Station -->
+        <div class="lab-card system-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="section-icon">🧪</span>
+              <h2>Pipette Tare</h2>
+            </div>
+            <span id="pipette-state-badge" class="badge-state state-optimal">CALIBRATED</span>
+          </div>
+          <div class="system-metrics">
+            <div class="metric-mini">
+              <span class="mini-label">Active Dispense</span>
+              <span class="mini-val" id="pipette-val-vol">50.0 µL</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Viscosity</span>
+              <span class="mini-val" id="pipette-val-visc">AQUEOUS</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Channel</span>
+              <span class="mini-val">Single</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Total Dispensed</span>
+              <span class="mini-val" id="pipette-val-total">1,450 µL</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- System 4: Pressure Cascade & Particle Counter -->
+        <div class="lab-card system-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="section-icon">🛡️</span>
+              <h2>Air Cascade</h2>
+            </div>
+            <span id="cascade-state-badge" class="badge-state state-optimal">ISO CLASS 5</span>
+          </div>
+          <div class="system-metrics">
+            <div class="metric-mini">
+              <span class="mini-label">Cleanroom</span>
+              <span class="mini-val" id="cascade-val-clean">+30 Pa</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Gradient</span>
+              <span class="mini-val" id="cascade-val-gradient">+15 Pa</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">≥0.5µm Count</span>
+              <span class="mini-val" id="cascade-val-particles">620 /m³</span>
+            </div>
+            <div class="metric-mini">
+              <span class="mini-label">Airlock Seal</span>
+              <span class="mini-val" id="cascade-val-seal">HERMETIC</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Active Incubation Timers & Voice Streamer Panel -->
       <div class="lab-card timers-hud-card">
         <div class="card-header">
