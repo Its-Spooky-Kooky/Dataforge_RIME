@@ -280,47 +280,31 @@
         </div>
       </div>
 
-      <!-- Hands-Free Demo Controls Panel -->
-      <div class="lab-card controls-card">
+      <!-- Active Incubation Timers & Voice Streamer Panel -->
+      <div class="lab-card timers-hud-card">
         <div class="card-header">
           <div class="card-title-group">
-            <span class="section-icon">🎛️</span>
-            <h2>Hands-Free Voice Simulation Triggers</h2>
+            <span class="section-icon">⏱️</span>
+            <h2>Active Cleanroom Voice Timers &amp; Stream</h2>
           </div>
-          <span class="sub-label">One-click reproducible demonstrations</span>
+          <span class="live-tag">100% VOICE DRIVEN</span>
         </div>
-        <div class="btn-cluster">
-          <button class="action-btn btn-primary" id="btn-compound">
-            <span class="btn-icon">⚡</span>
-            <div class="btn-text">
-              <strong>Compound Spoken Command</strong>
-              <small>"Log 15% oxidation on tube 4B and turn on ventilation high"</small>
-            </div>
-          </button>
+        <p class="card-desc">Timers and cleanroom commands are initiated exclusively via technician speech input.</p>
 
-          <button class="action-btn btn-danger" id="btn-bargein">
-            <span class="btn-icon">🛑</span>
-            <div class="btn-text">
-              <strong>Simulate Barge-In Interrupt</strong>
-              <small>Fences 2.5s tool & cuts Rime audio (&lt;180ms benchmark)</small>
-            </div>
-          </button>
+        <div class="timers-hud-grid" id="timers-hud-grid">
+          <div class="timer-placeholder" id="timer-placeholder">
+            <span>No active countdown timers. Speak: <em>"Set timer for 45 seconds"</em> on the Operator Mic.</span>
+          </div>
+        </div>
 
-          <button class="action-btn btn-warning" id="btn-centrifuge">
-            <span class="btn-icon">🌀</span>
-            <div class="btn-text">
-              <strong>Spin Centrifuge (12,000 RPM)</strong>
-              <small>"Spin microcentrifuge at 12000 RPM for 60 seconds"</small>
-            </div>
-          </button>
-
-          <button class="action-btn btn-accent" id="btn-toggle-mic">
-            <span class="btn-icon">🎤</span>
-            <div class="btn-text">
-              <strong id="mic-btn-label">Activate Microphone</strong>
-              <small>Continuous hands-free cleanroom speech recognition</small>
-            </div>
-          </button>
+        <div class="hud-mic-launch-bar">
+          <div class="launch-info">
+            <strong>Cleanroom Operator Voice Channel</strong>
+            <small>Speak commands via microphone on mobile/headset terminal</small>
+          </div>
+          <a href="/operator" class="operator-launch-btn">
+            <span>🎙️ Open Operator Mic</span>
+          </a>
         </div>
       </div>
     </section>

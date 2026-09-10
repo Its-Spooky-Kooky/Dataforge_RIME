@@ -385,7 +385,44 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
             "model_id": RIME_MODEL_ID
         }
 
-    # 3. VENTILATION / FAN RELAY
+    # 3. CLEANROOM TIMERS & COUNTDOWN
+    if "timer" in lower_t or "countdown" in lower_t or "incubate" in lower_t:
+        if any(w in lower_t for w in ["cancel", "stop", "clear", "kill"]):
+            c_cnt = await lab_store.cancel_all_timers()
+            actions_taken.append(f"Cancelled {c_cnt} active timers")
+            response_phrases.append("Active cleanroom incubation timers cancelled.")
+        else:
+            sec_match = re.search(r"\b([0-9]{1,4})\s*(?:sec|second|s)\b", lower_t)
+            min_match = re.search(r"\b([0-9]{1,3})\s*(?:min|minute|m)\b", lower_t)
+            dur = 45
+            if sec_match:
+                dur = int(sec_match.group(1))
+            elif min_match:
+                dur = int(min_match.group(1)) * 60
+
+            label = "Incubation"
+            if "tube" in lower_t or "plate" in lower_t:
+                t_m = re.search(r"\b([0-9]{1,3}[a-zA-Z]|[a-zA-Z][0-9]{1,3})\b", transcript)
+                if t_m:
+                    label = f"Tube {t_m.group(1).upper()}"
+
+            tmr = await lab_store.add_timer(label=label, duration_sec=dur)
+            actions_taken.append(f"Started {dur}s countdown timer ({label})")
+            response_phrases.append(f"Cleanroom incubation timer started for {dur} seconds for {label}.")
+
+    # 4. CLEANROOM PROTOCOL & SOP GUIDANCE
+    if any(k in lower_t for k in ["protocol", "sop", "procedure", "how to", "guideline", "rule", "limit"]):
+        matched_sop = None
+        for key, text in lab_store.protocols.items():
+            if key in lower_t:
+                matched_sop = text
+                break
+        if not matched_sop:
+            matched_sop = "Cleanroom Standard SOP: Maintain sterile double-glove barrier, keep airflow unobstructed, and log all vial metrics hands-free."
+        actions_taken.append("Delivered cleanroom SOP protocol guidance")
+        response_phrases.append(matched_sop)
+
+    # 5. VENTILATION / FAN RELAY
     if any(k in lower_t for k in ["fan", "vent", "ventilation", "exhaust", "hood", "blower"]):
         is_off = any(k in lower_t for k in ["off", "stop", "shutdown", "disable", "zero", "cut"])
         state = "OFF" if is_off else "ON"

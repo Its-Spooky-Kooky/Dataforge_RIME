@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SterileSpace - Cleanroom Operator Voice Terminal</title>
+  <title>SterileSpace - 100% Hands-Free Cleanroom Operator Voice Terminal</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,7 @@
       </div>
       <div>
         <h1 class="brand-title">SterileSpace</h1>
-        <span class="sub-brand">Technician Voice Terminal</span>
+        <span class="sub-brand">100% Voice-Only Operator Terminal</span>
       </div>
     </div>
 
@@ -38,7 +38,7 @@
     <div class="header-right">
       <div class="status-pill barrier-badge">
         <span class="shield-icon">🛡️</span>
-        <span>GLOVE BARRIER: <strong class="glow-cyan">ACTIVE</strong></span>
+        <span>STERILE GLOVES: <strong class="glow-cyan">PURE VOICE ONLY</strong></span>
       </div>
       <div id="ws-status" class="status-pill ws-badge connected">
         <span class="status-indicator"></span>
@@ -51,24 +51,41 @@
   <main class="operator-container">
     <div class="operator-card">
       <div class="operator-status-header">
-        <span class="status-tag live-glow-tag">HANDS-FREE BIO-SAFETY COPILOT</span>
+        <span class="status-tag live-glow-tag">PURE HANDS-FREE VOICE OPERATING SYSTEM</span>
         <div class="tts-pill">
-          <span>Active TTS:</span>
+          <span>Speech Engine:</span>
           <strong>Rime Coda (astra)</strong>
         </div>
       </div>
 
       <!-- Giant Interactive Glowing Mic Orb -->
       <div class="mic-orb-wrapper">
-        <button id="btn-mic-orb" class="mic-orb" title="Click to Toggle Hands-Free Microphone">
+        <div id="btn-mic-orb" class="mic-orb listening" title="Continuous Hands-Free Cleanroom Microphone Active">
           <div class="orb-ring ring-1"></div>
           <div class="orb-ring ring-2"></div>
           <div class="orb-core">
             <span class="orb-icon" id="mic-icon">🎙️</span>
           </div>
-        </button>
-        <div class="mic-state-label" id="mic-state-label">TAP OR SPEAK HANDS-FREE</div>
-        <div class="mic-subtext" id="mic-subtext">Continuous voice recognition active. Speak laboratory commands naturally.</div>
+        </div>
+        <div class="mic-state-label" id="mic-state-label">CONTINUOUS VOICE LISTENING ACTIVE</div>
+        <div class="mic-subtext" id="mic-subtext">Screen touch is physically prohibited. Speak cleanroom commands naturally.</div>
+      </div>
+
+      <!-- Live Decibel / RMS Audio Level VU Meter (Hood Noise Gate) -->
+      <div class="vu-meter-card">
+        <div class="vu-meter-header">
+          <span class="vu-title">HOOD ACOUSTIC NOISE GATE &amp; DECIBEL LEVEL</span>
+          <span class="vu-value" id="vu-db-text">54 dB (LISTENING)</span>
+        </div>
+        <div class="vu-bar-track">
+          <div class="vu-bar-fill" id="vu-bar-fill" style="width: 45%;"></div>
+          <div class="noise-threshold-marker" title="65 dB Ambient Hood Fan Filter Threshold"></div>
+        </div>
+        <div class="vu-footer-labels">
+          <span>0 dB (Silence)</span>
+          <span class="threshold-label">65 dB Noise Gate Threshold</span>
+          <span>100 dB (Speech Peak)</span>
+        </div>
       </div>
 
       <!-- Live Voice Waveform -->
@@ -76,57 +93,65 @@
         <canvas id="voice-canvas" width="500" height="70"></canvas>
       </div>
 
-      <!-- Transcript & Copilot Response Feed -->
+      <!-- Live Transcript & Copilot Response Feed -->
       <div class="speech-feed">
         <div class="feed-bubble user-bubble">
-          <span class="bubble-speaker">OPERATOR (VOICE INPUT):</span>
-          <p id="transcript-display">"Say: 'Set fan high', 'Spin centrifuge 12000', or 'Log tube 4B 15%'"</p>
+          <span class="bubble-speaker">CLEANROOM TECHNICIAN (VOICE RECOGNIZED):</span>
+          <p id="transcript-display">"Listening continuously... speak any laboratory instruction aloud."</p>
         </div>
 
         <div class="feed-bubble copilot-bubble">
           <div class="bubble-header-row">
-            <span class="bubble-speaker">STERILESPACE (RIME TTS):</span>
+            <span class="bubble-speaker">STERILESPACE (RIME TTS AUDIO):</span>
             <span class="audio-tag" id="tts-audio-tag">READY</span>
           </div>
-          <p id="response-display">"Standing by for cleanroom commands. Hands-free voice operating barrier active."</p>
+          <p id="response-display">"SterileSpace copilot online. Hands-free voice operating barrier active. Command fan, centrifuge, timers, or observations."</p>
         </div>
       </div>
 
-      <!-- Quick Cleanroom Spoken Command Chips -->
-      <div class="quick-commands-section">
-        <span class="qc-title">TOUCHLESS QUICK VOICE COMMANDS (CLICK OR SPEAK):</span>
-        <div class="chip-grid">
-          <button class="voice-chip" data-command="Turn on ventilation high">
-            <span class="chip-icon">🌀</span>
-            <span class="chip-text">"Fan HIGH" (2400 RPM)</span>
-          </button>
-          <button class="voice-chip" data-command="Turn off ventilation">
-            <span class="chip-icon">🛑</span>
-            <span class="chip-text">"Fan OFF"</span>
-          </button>
-          <button class="voice-chip" data-command="Spin microcentrifuge at 12000 RPM for 60 seconds">
-            <span class="chip-icon">⚡</span>
-            <span class="chip-text">"Spin Centrifuge" (12,000 RPM)</span>
-          </button>
-          <button class="voice-chip" data-command="Log oxidation 15% on tube 4B">
-            <span class="chip-icon">🧪</span>
-            <span class="chip-text">"Log Tube 4B" (15% Oxidation)</span>
-          </button>
-          <button class="voice-chip" data-command="What is the cleanroom status?">
-            <span class="chip-icon">📊</span>
-            <span class="chip-text">"Cleanroom Status"</span>
-          </button>
-          <button class="voice-chip chip-emergency" id="btn-emergency-abort" data-command="ABORT IMMEDIATELY! STOP!">
-            <span class="chip-icon">🚨</span>
-            <span class="chip-text">"EMERGENCY ABORT" (&lt;180ms)</span>
-          </button>
+      <!-- Active Cleanroom Voice Timers Widget -->
+      <div class="timers-section" id="timers-container" style="display: none;">
+        <span class="section-title">ACTIVE INCUBATION TIMERS (VOICE CONTROLLED):</span>
+        <div class="timers-grid" id="timers-grid">
+          <!-- Dynamically populated by voice -->
+        </div>
+      </div>
+
+      <!-- Spoken Command Reference Guide (Text Only, No Buttons) -->
+      <div class="voice-guide-section">
+        <span class="guide-title">SPOKEN CLEANROOM COMMANDS (VOICE DRIVEN ONLY):</span>
+        <div class="guide-grid">
+          <div class="guide-item">
+            <span class="guide-cmd">"Fan high" / "Fan off"</span>
+            <span class="guide-desc">Controls biosafety cabinet exhaust relay (0 to 2400 RPM)</span>
+          </div>
+          <div class="guide-item">
+            <span class="guide-cmd">"Spin centrifuge 12000 RPM"</span>
+            <span class="guide-desc">Accelerates 14,000 RPM microcentrifuge rotor (13,684 × g)</span>
+          </div>
+          <div class="guide-item">
+            <span class="guide-cmd">"Set timer for 45 seconds"</span>
+            <span class="guide-desc">Starts hands-free incubation timer with Rime audio alert</span>
+          </div>
+          <div class="guide-item">
+            <span class="guide-cmd">"Log 15% oxidation on tube 4B"</span>
+            <span class="guide-desc">Commits sample observation into database inventory</span>
+          </div>
+          <div class="guide-item">
+            <span class="guide-cmd">"Cleanroom status"</span>
+            <span class="guide-desc">Reports ambient temperature, pressure, and containment</span>
+          </div>
+          <div class="guide-item guide-emergency">
+            <span class="guide-cmd">"ABORT!" / "STOP!"</span>
+            <span class="guide-desc">Sub-180ms cancellation fence stops all actions & locks brake</span>
+          </div>
         </div>
       </div>
 
       <!-- Footer Info -->
       <div class="operator-footer">
-        <span>Connected to Wall Display via WebSocket • Actions automatically update the Operations HUD</span>
-        <a href="/hud" class="hud-link">Open Wall Operations HUD &rarr;</a>
+        <span>Connected to Wall Display via WebSocket • 100% Touchless Voice Interface</span>
+        <a href="/hud" class="hud-link">Switch to Wall Operations HUD &rarr;</a>
       </div>
     </div>
   </main>

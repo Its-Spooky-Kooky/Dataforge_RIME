@@ -1263,6 +1263,276 @@ body.cleanroom-theme {
 }
 
 /* ==============================================================================
+   Acoustic Noise Gate & VU Meter (Hood Filter 65dB)
+   ============================================================================== */
+.vu-meter-card {
+  background: #080c14;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.vu-meter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vu-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.vu-value {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-green);
+}
+
+.vu-bar-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  background: #111827;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vu-bar-fill {
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+  border-radius: 6px;
+  transition: width 0.1s ease, background 0.2s ease;
+}
+
+.noise-threshold-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 60%;
+  width: 2px;
+  background: #ffab00;
+  box-shadow: 0 0 6px rgba(255, 171, 0, 0.8);
+  z-index: 2;
+}
+
+.vu-footer-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--text-dim);
+}
+
+.threshold-label {
+  color: #ffb74d;
+}
+
+/* ==============================================================================
+   Active Cleanroom Voice Timers Grid
+   ============================================================================== */
+.timers-section, .timers-hud-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.section-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.timers-grid, .timers-hud-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.timer-item {
+  background: #080c14;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: timerPulse 2s infinite ease-in-out;
+}
+
+@keyframes timerPulse {
+  0% { box-shadow: 0 0 5px rgba(0, 229, 255, 0.15); }
+  50% { box-shadow: 0 0 14px rgba(0, 229, 255, 0.35); }
+  100% { box-shadow: 0 0 5px rgba(0, 229, 255, 0.15); }
+}
+
+.timer-item.completed {
+  border-color: var(--accent-green);
+  animation: none;
+  background: rgba(0, 230, 118, 0.08);
+}
+
+.timer-badge-id {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.1);
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+}
+
+.timer-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.timer-body strong {
+  font-size: 0.82rem;
+  color: #ffffff;
+}
+
+.timer-countdown {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--accent-amber);
+  margin-top: 0.15rem;
+}
+
+.timer-countdown.done {
+  color: var(--accent-green);
+  font-weight: 700;
+}
+
+.timer-placeholder {
+  padding: 1.25rem;
+  text-align: center;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+}
+
+.timer-placeholder em {
+  color: var(--accent-cyan);
+  font-style: normal;
+}
+
+/* HUD Mic Launch Bar */
+.hud-mic-launch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding: 0.9rem 1.2rem;
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 10px;
+}
+
+.launch-info strong {
+  display: block;
+  font-size: 0.84rem;
+  color: #ffffff;
+}
+
+.launch-info small {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.operator-launch-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(0, 230, 118, 0.25));
+  border: 1px solid var(--accent-cyan);
+  border-radius: 50px;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+}
+
+.operator-launch-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
+}
+
+/* ==============================================================================
+   Spoken Command Guide (Voice-Driven Only, Non-Clickable)
+   ============================================================================== */
+.voice-guide-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+}
+
+.guide-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.guide-item {
+  background: #080c14;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.guide-cmd {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.guide-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.guide-emergency {
+  border-color: rgba(255, 23, 68, 0.4);
+  background: rgba(255, 23, 68, 0.05);
+}
+
+.guide-emergency .guide-cmd {
+  color: #ff5252;
+}
+
+/* ==============================================================================
    Responsive Queries
    ============================================================================== */
 @media (max-width: 1024px) {
@@ -1272,9 +1542,13 @@ body.cleanroom-theme {
   .equipment-grid {
     grid-template-columns: 1fr;
   }
+  .guide-grid {
+    grid-template-columns: 1fr;
+  }
   .chip-grid {
     grid-template-columns: 1fr;
   }
 }
+
 
 

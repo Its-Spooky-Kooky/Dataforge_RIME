@@ -175,8 +175,67 @@ function handleTelemetryMessage(msg) {
   } else if (type === "SETTINGS_CHANGED") {
     addLog("SYSTEM", `Active Rime Configuration: Model=${data.model_id.toUpperCase()}, Speaker=${data.speaker}`);
     activeModelDisplay.innerText = data.model_id.toUpperCase();
+  } else if (type === "TIMER_STARTED" || type === "TIMER_TICK" || type === "TIMER_COMPLETED" || type === "TIMERS_CANCELLED") {
+    handleTimerTelemetry(type, data);
   }
 }
+
+// Active Cleanroom Voice Timers Rendering on Operations HUD
+const timersHudGrid = document.getElementById("timers-hud-grid");
+const timerPlaceholder = document.getElementById("timer-placeholder");
+const hudTimersMap = new Map();
+
+function handleTimerTelemetry(type, data) {
+  if (!timersHudGrid) return;
+
+  if (type === "TIMERS_CANCELLED") {
+    hudTimersMap.clear();
+    timersHudGrid.innerHTML = `
+      <div class="timer-placeholder" id="timer-placeholder">
+        <span>No active countdown timers. Speak: <em>"Set timer for 45 seconds"</em> on the Operator Mic.</span>
+      </div>
+    `;
+    addLog("BARGE", "All incubation countdown timers cancelled via voice abort.");
+    return;
+  }
+
+  const timer = data.timer;
+  if (!timer) return;
+
+  if (timerPlaceholder && timerPlaceholder.parentElement) {
+    timerPlaceholder.remove();
+  }
+
+  hudTimersMap.set(timer.id, timer);
+  const isFinished = timer.status === "COMPLETED";
+
+  let el = document.getElementById(`hud-timer-${timer.id}`);
+  const timerHtml = `
+    <div class="timer-badge-id">${timer.id}</div>
+    <div class="timer-body">
+      <strong>${timer.label}</strong>
+      <span class="timer-countdown ${isFinished ? 'done' : ''}">${timer.remaining_sec}s remaining</span>
+    </div>
+  `;
+
+  if (el) {
+    el.innerHTML = timerHtml;
+    if (isFinished) el.classList.add("completed");
+  } else {
+    const div = document.createElement("div");
+    div.id = `hud-timer-${timer.id}`;
+    div.className = `timer-item ${isFinished ? 'completed' : ''}`;
+    div.innerHTML = timerHtml;
+    timersHudGrid.appendChild(div);
+  }
+
+  if (type === "TIMER_STARTED") {
+    playCleanroomChime();
+    addLog("TOOL", `Voice Timer Started: [${timer.id}] ${timer.label} (${timer.duration_sec}s)`);
+  } else if (type === "TIMER_COMPLETED") {
+    playCleanroomChime();
+    addLog("TOOL", `Voice Timer Completed: [${timer.id}] ${timer.label}`);
+  }
 
 // ==============================================================================
 // Sample Inventory Grid Rendering
@@ -515,154 +574,161 @@ btnExportAudit.addEventListener("click", () => {
 });
 
 // ==============================================================================
-// Action Demonstration Buttons
+// Action Demonstration & Mic Buttons (Safely Guarded)
 // ==============================================================================
-btnCompound.addEventListener("click", async () => {
-  addLog("SYSTEM", 'User spoken command: "Log 15% oxidation on tube 4B and turn on ventilation high"');
-  setAudioActive(true, "PROCESSING SPEECH");
+if (btnCompound) {
+  btnCompound.addEventListener("click", async () => {
+    addLog("SYSTEM", 'User spoken command: "Log 15% oxidation on tube 4B and turn on ventilation high"');
+    setAudioActive(true, "PROCESSING SPEECH");
 
-  try {
-    const resp = await fetch("/api/simulate/voice-turn", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript: "Log oxidation 15% on tube 4B and turn on ventilation high" })
-    });
-    const result = await resp.json();
-    addLog("NORM", `Rime Speech Output: "${result.response_normalized_for_rime}"`);
+    try {
+      const resp = await fetch("/api/simulate/voice-turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: "Log oxidation 15% on tube 4B and turn on ventilation high" })
+      });
+      const result = await resp.json();
+      addLog("NORM", `Rime Speech Output: "${result.response_normalized_for_rime}"`);
 
-    const ttsResp = await fetch("/api/tts/rime", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: result.response_normalized_for_rime })
-    });
-    const audioBlob = await ttsResp.arrayBuffer();
-    await playAudioBuffer(audioBlob);
-  } catch (err) {
-    setAudioActive(false);
-  }
-});
-
-btnBargein.addEventListener("click", async () => {
-  addLog("SYSTEM", "Simulating in-flight 2.5s hardware action interrupted by operator barge-in...");
-  setAudioActive(true, "TOOL IN-FLIGHT");
-
-  try {
-    const resp = await fetch("/api/simulate/voice-turn", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        transcript: "Wait, abort that! Stop fan update!",
-        simulate_interrupt: true,
-        interrupt_after_ms: 350
-      })
-    });
-    const result = await resp.json();
-    setAudioActive(false);
-
-    if (result.barge_in_metrics) {
-      const lat = result.barge_in_metrics.cutoff_latency_ms;
-      addLog("BARGE", `User barge-in verified: Audio + async tool aborted in ${lat} ms (Target <180ms: PASSED)`);
+      const ttsResp = await fetch("/api/tts/rime", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: result.response_normalized_for_rime })
+      });
+      const audioBlob = await ttsResp.arrayBuffer();
+      await playAudioBuffer(audioBlob);
+    } catch (err) {
+      setAudioActive(false);
     }
-  } catch (err) {
-    setAudioActive(false);
-  }
-});
+  });
+}
 
-btnCentrifuge.addEventListener("click", async () => {
-  addLog("SYSTEM", 'User command: "Spin microcentrifuge at 12000 RPM for 60 seconds"');
-  setAudioActive(true, "CENTRIFUGE MOTOR RAMP-UP");
+if (btnBargein) {
+  btnBargein.addEventListener("click", async () => {
+    addLog("SYSTEM", "Simulating in-flight 2.5s hardware action interrupted by operator barge-in...");
+    setAudioActive(true, "TOOL IN-FLIGHT");
 
-  try {
-    const resp = await fetch("/api/simulate/voice-turn", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript: "Spin microcentrifuge at 12000 RPM for 60 seconds" })
-    });
-    const result = await resp.json();
-    addLog("NORM", `Rime Speech Output: "${result.response_normalized_for_rime}"`);
+    try {
+      const resp = await fetch("/api/simulate/voice-turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: "Wait, abort that! Stop fan update!",
+          simulate_interrupt: true,
+          interrupt_after_ms: 350
+        })
+      });
+      const result = await resp.json();
+      setAudioActive(false);
 
-    const ttsResp = await fetch("/api/tts/rime", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: result.response_normalized_for_rime })
-    });
-    const audioBlob = await ttsResp.arrayBuffer();
-    await playAudioBuffer(audioBlob);
-  } catch (err) {
-    setAudioActive(false);
-  }
-});
+      if (result.barge_in_metrics) {
+        const lat = result.barge_in_metrics.cutoff_latency_ms;
+        addLog("BARGE", `User barge-in verified: Audio + async tool aborted in ${lat} ms (Target <180ms: PASSED)`);
+      }
+    } catch (err) {
+      setAudioActive(false);
+    }
+  });
+}
 
-// Live Speech Recognition Toggle
+if (btnCentrifuge) {
+  btnCentrifuge.addEventListener("click", async () => {
+    addLog("SYSTEM", 'User command: "Spin microcentrifuge at 12000 RPM for 60 seconds"');
+    setAudioActive(true, "CENTRIFUGE MOTOR RAMP-UP");
+
+    try {
+      const resp = await fetch("/api/simulate/voice-turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: "Spin microcentrifuge at 12000 RPM for 60 seconds" })
+      });
+      const result = await resp.json();
+      addLog("NORM", `Rime Speech Output: "${result.response_normalized_for_rime}"`);
+
+      const ttsResp = await fetch("/api/tts/rime", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: result.response_normalized_for_rime })
+      });
+      const audioBlob = await ttsResp.arrayBuffer();
+      await playAudioBuffer(audioBlob);
+    } catch (err) {
+      setAudioActive(false);
+    }
+  });
+}
+
+// Live Speech Recognition Toggle (Safely Guarded)
 let recognition = null;
 let isMicActive = false;
 
-btnToggleMic.addEventListener("click", () => {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    alert("Speech recognition is not supported in this browser. Use the simulation triggers for full functionality!");
-    return;
-  }
+if (btnToggleMic) {
+  btnToggleMic.addEventListener("click", () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser. Use the simulation triggers for full functionality!");
+      return;
+    }
 
-  if (isMicActive) {
-    if (recognition) recognition.stop();
-    isMicActive = false;
-    micBtnLabel.innerText = "Activate Microphone";
-    vadStatus.innerText = "IDLE";
-    btnToggleMic.classList.remove("active");
-  } else {
-    try {
-      recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
+    if (isMicActive) {
+      if (recognition) recognition.stop();
+      isMicActive = false;
+      if (micBtnLabel) micBtnLabel.innerText = "Activate Microphone";
+      if (vadStatus) vadStatus.innerText = "IDLE";
+      btnToggleMic.classList.remove("active");
+    } else {
+      try {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
 
-      recognition.onstart = () => {
-        isMicActive = true;
-        micBtnLabel.innerText = "Listening (Hands-Free)...";
-        vadStatus.innerText = "VOICE ACTIVE";
-        btnToggleMic.classList.add("active");
-        addLog("SYSTEM", "Microphone listening for hands-free cleanroom voice commands.");
-      };
+        recognition.onstart = () => {
+          isMicActive = true;
+          if (micBtnLabel) micBtnLabel.innerText = "Listening (Hands-Free)...";
+          if (vadStatus) vadStatus.innerText = "VOICE ACTIVE";
+          btnToggleMic.classList.add("active");
+          addLog("SYSTEM", "Microphone listening for hands-free cleanroom voice commands.");
+        };
 
-      recognition.onresult = async (event) => {
-        let transcript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
+        recognition.onresult = async (event) => {
+          let transcript = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
 
-        if (event.results[event.results.length - 1].isFinal) {
-          addLog("SYSTEM", `Heard: "${transcript}"`);
-          const resp = await fetch("/api/simulate/voice-turn", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transcript })
-          });
-          const resJson = await resp.json();
-          if (resJson.response_normalized_for_rime) {
-            const ttsResp = await fetch("/api/tts/rime", {
+          if (event.results[event.results.length - 1].isFinal) {
+            addLog("SYSTEM", `Heard: "${transcript}"`);
+            const resp = await fetch("/api/simulate/voice-turn", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: resJson.response_normalized_for_rime })
+              body: JSON.stringify({ transcript })
             });
-            const audioData = await ttsResp.arrayBuffer();
-            await playAudioBuffer(audioData);
+            const resJson = await resp.json();
+            if (resJson.response_normalized_for_rime) {
+              const ttsResp = await fetch("/api/tts/rime", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: resJson.response_normalized_for_rime })
+              });
+              const audioData = await ttsResp.arrayBuffer();
+              await playAudioBuffer(audioData);
+            }
           }
-        }
-      };
+        };
 
-      recognition.onend = () => {
-        if (isMicActive) recognition.start();
-      };
+        recognition.onend = () => {
+          if (isMicActive) recognition.start();
+        };
 
-      recognition.start();
-    } catch (err) {
-      console.error("Speech recognition error:", err);
-    }
-  }
-});
+        recognition.start();
+      } catch (err) {
+        console.error("Speech recognition error:", err);
+      }
+}
 
 window.addEventListener("DOMContentLoaded", () => {
   connectWebSocket();
   fetchBenchmarkHistory();
 });
+

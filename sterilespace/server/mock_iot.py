@@ -107,6 +107,18 @@ class MockLabStore:
             "operator_status": "GLOVED_HANDS_FREE"
         }
 
+        # Cleanroom Voice Timers
+        self.timers: Dict[str, Dict[str, Any]] = {}
+
+        # Cleanroom SOP Knowledge Base
+        self.protocols: Dict[str, str] = {
+            "sterilization": "Aseptic sterilization protocol: Disinfect biosafety hood surfaces with 70% ethanol. Allow 5 minutes contact time before starting airflow.",
+            "clean": "Hood decontamination: Wipe from top to bottom, back to front with 70% ethanol. Do not block rear exhaust grilles.",
+            "tube 4b": "Sample four-bee SOP: Invert gently 3 times. Avoid high shear. Incubate in dark at 21 degrees Celsius.",
+            "centrifuge": "Microcentrifuge operating rule: Fixed-angle rotor maximum speed is 14,000 R-P-M. All opposing tube wells must balance within 0.1 grams.",
+            "waste": "Biohazard disposal SOP: Pipette tips and microfuge tubes must enter double-bagged biohazard waste. Autoclave at 121 degrees Celsius for 30 minutes."
+        }
+
         # FDA 21 CFR Part 11 Audit Trail
         self.audit_trail: List[Dict[str, Any]] = []
         self._init_audit_log()
@@ -181,9 +193,54 @@ class MockLabStore:
             "centrifuge": dict(self.centrifuge),
             "incubator": dict(self.incubator),
             "environment": dict(self.environment),
+            "timers": list(self.timers.values()),
             "audit_count": len(self.audit_trail),
             "system_time": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
+
+    async def add_timer(self, label: str, duration_sec: int) -> Dict[str, Any]:
+        """Creates an asynchronous countdown timer and broadcasts live ticks to the HUD."""
+        timer_id = f"TMR-{len(self.timers) + 1:03d}"
+        created_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        timer_record = {
+            "id": timer_id,
+            "label": label,
+            "duration_sec": duration_sec,
+            "remaining_sec": duration_sec,
+            "status": "RUNNING",
+            "created_at": created_at
+        }
+        self.timers[timer_id] = timer_record
+        await self.notify_subscribers("TIMER_STARTED", {"timer": timer_record})
+
+        async def countdown():
+            try:
+                for rem in range(duration_sec - 1, -1, -1):
+                    await asyncio.sleep(1.0)
+                    if timer_id not in self.timers or self.timers[timer_id]["status"] != "RUNNING":
+                        return
+                    self.timers[timer_id]["remaining_sec"] = rem
+                    await self.notify_subscribers("TIMER_TICK", {"timer": self.timers[timer_id]})
+                
+                self.timers[timer_id]["status"] = "COMPLETED"
+                await self.notify_subscribers("TIMER_COMPLETED", {"timer": self.timers[timer_id]})
+            except asyncio.CancelledError:
+                if timer_id in self.timers:
+                    self.timers[timer_id]["status"] = "CANCELLED"
+                    await self.notify_subscribers("TIMER_CANCELLED", {"timer": self.timers[timer_id]})
+
+        asyncio.create_task(countdown())
+        return timer_record
+
+    async def cancel_all_timers(self) -> int:
+        """Cancels all active cleanroom timers."""
+        count = 0
+        for t_id, t in list(self.timers.items()):
+            if t["status"] == "RUNNING":
+                t["status"] = "CANCELLED"
+                count += 1
+        await self.notify_subscribers("TIMERS_CANCELLED", {"cancelled_count": count})
+        return count
 
     async def log_sample_observation(
         self,

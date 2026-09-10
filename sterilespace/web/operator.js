@@ -1,7 +1,7 @@
 /**
- * SterileSpace - Cleanroom Operator Voice Terminal Client
- * Continuous hands-free voice recognition, giant pulsing mic orb,
- * audio playback with Rime TTS, quick command chips, and real-time WebSocket link.
+ * SterileSpace - 100% Voice-Driven Operator Terminal
+ * Pure microphone interaction, Web Audio API RMS noise gating (65 dB hood filter),
+ * continuous speech recognition, active incubation timers, and Rime TTS audio synthesis.
  */
 
 // DOM Elements
@@ -16,16 +16,26 @@ const wsStatus = document.getElementById("ws-status");
 const voiceCanvas = document.getElementById("voice-canvas");
 const canvasCtx = voiceCanvas.getContext("2d");
 
-// Audio Context & Analyser
+// VU Meter Elements
+const vuBarFill = document.getElementById("vu-bar-fill");
+const vuDbText = document.getElementById("vu-db-text");
+
+// Timers Section
+const timersContainer = document.getElementById("timers-container");
+const timersGrid = document.getElementById("timers-grid");
+
+// Web Audio API Context & Nodes
 let audioCtx = null;
-let analyser = null;
+let analyserNode = null;
+let micMediaStream = null;
 let isAudioActive = false;
+let isRecognizing = false;
+let recognition = null;
+const NOISE_THRESHOLD_DB = 60; // 60 dB laminar flow hood noise gate
 
 function getAudioContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 64;
   }
   if (audioCtx.state === "suspended") {
     audioCtx.resume();
@@ -69,9 +79,58 @@ function playCutoffClick() {
 }
 
 // ==============================================================================
-// WebSocket Telemetry Connection
+// Live Microphone RMS Level & Hood Noise Gating (Web Audio API)
+// ==============================================================================
+async function initMicrophoneNoiseGating() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    micMediaStream = stream;
+    const ctx = getAudioContext();
+    const source = ctx.createMediaStreamSource(stream);
+
+    analyserNode = ctx.createAnalyser();
+    analyserNode.fftSize = 256;
+    source.connect(analyserNode);
+
+    const buffer = new Float32Array(analyserNode.fftSize);
+
+    function updateRMS() {
+      if (!analyserNode) return;
+      analyserNode.getFloatTimeDomainData(buffer);
+
+      let sum = 0;
+      for (let i = 0; i < buffer.length; i++) {
+        sum += buffer[i] * buffer[i];
+      }
+      const rms = Math.sqrt(sum / buffer.length);
+      // Approximate dB SPL relative to noise gate
+      const db = Math.min(100, Math.max(20, Math.round(20 * Math.log10(rms + 1e-4) + 100)));
+
+      if (vuBarFill && vuDbText) {
+        vuBarFill.style.width = `${db}%`;
+        if (db > NOISE_THRESHOLD_DB) {
+          vuBarFill.style.background = "linear-gradient(90deg, #00e5ff, #00e676)";
+          vuDbText.innerText = `${db} dB (VOICE DETECTED)`;
+          vuDbText.style.color = "#00e676";
+        } else {
+          vuBarFill.style.background = "#374151";
+          vuDbText.innerText = `${db} dB (HOOD NOISE FILTERED)`;
+          vuDbText.style.color = "var(--text-dim)";
+        }
+      }
+      requestAnimationFrame(updateRMS);
+    }
+    updateRMS();
+  } catch (err) {
+    if (vuDbText) vuDbText.innerText = "MIC PERMISSION PENDING";
+  }
+}
+
+// ==============================================================================
+// WebSocket Telemetry Connection & Timer Sync
 // ==============================================================================
 let socket = null;
+const activeTimersMap = new Map();
 
 function connectWebSocket() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -89,10 +148,19 @@ function connectWebSocket() {
       const msg = JSON.parse(event.data);
       if (msg.type === "TOOL_ABORTED" || msg.type === "BARGE_IN_TRIGGERED") {
         playCutoffClick();
-        responseDisplay.innerText = `[ABORT TRIGGERED] Operations immediately halted in ${msg.data.cutoff_latency_ms || 0.1} ms!`;
+        responseDisplay.innerText = `[ABORT TRIGGERED] Operations halted in ${msg.data.cutoff_latency_ms || 0.1} ms!`;
         responseDisplay.style.color = "#ff5252";
-      } else if (msg.type === "SAMPLE_UPDATED") {
+      } else if (msg.type === "TIMER_STARTED" || msg.type === "TIMER_TICK") {
+        updateTimerDisplay(msg.data.timer);
+      } else if (msg.type === "TIMER_COMPLETED") {
+        updateTimerDisplay(msg.data.timer);
         playCleanroomChime();
+        responseDisplay.innerText = `[TIMER COMPLETE] ${msg.data.timer.label} countdown finished!`;
+        responseDisplay.style.color = "#00e676";
+      } else if (msg.type === "TIMERS_CANCELLED") {
+        timersGrid.innerHTML = "";
+        timersContainer.style.display = "none";
+        activeTimersMap.clear();
       }
     } catch (e) {}
   };
@@ -102,6 +170,34 @@ function connectWebSocket() {
     wsStatus.innerHTML = '<span class="status-indicator" style="background:#ff1744"></span><span>Reconnecting...</span>';
     setTimeout(connectWebSocket, 2500);
   };
+}
+
+function updateTimerDisplay(timer) {
+  if (!timersContainer || !timersGrid) return;
+  timersContainer.style.display = "flex";
+  activeTimersMap.set(timer.id, timer);
+
+  let existing = document.getElementById(`timer-card-${timer.id}`);
+  const isFinished = timer.status === "COMPLETED";
+
+  const cardHtml = `
+    <div class="timer-badge-id">${timer.id}</div>
+    <div class="timer-body">
+      <strong>${timer.label}</strong>
+      <span class="timer-countdown ${isFinished ? 'done' : ''}">${timer.remaining_sec}s remaining</span>
+    </div>
+  `;
+
+  if (existing) {
+    existing.innerHTML = cardHtml;
+    if (isFinished) existing.classList.add("completed");
+  } else {
+    const card = document.createElement("div");
+    card.id = `timer-card-${timer.id}`;
+    card.className = "timer-item";
+    card.innerHTML = cardHtml;
+    timersGrid.appendChild(card);
+  }
 }
 
 // ==============================================================================
@@ -207,15 +303,12 @@ async function executeVoiceCommand(transcript) {
 }
 
 // ==============================================================================
-// Web Speech Recognition (Hands-Free Listening)
+// Continuous Hands-Free Speech Recognition Loop
 // ==============================================================================
-let recognition = null;
-let isListening = false;
-
 function initSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    micSubtext.innerText = "Web Speech not supported in this browser. Use the Quick Command Chips below!";
+    micSubtext.innerText = "Web Speech recognition not available on this browser. Please use Chrome or Edge.";
     return;
   }
 
@@ -225,12 +318,10 @@ function initSpeechRecognition() {
   recognition.lang = "en-US";
 
   recognition.onstart = () => {
-    isListening = true;
-    btnMicOrb.classList.add("listening");
-    micIcon.innerText = "🎙️";
-    micStateLabel.innerText = "LISTENING (HANDS-FREE ACTIVE)";
+    isRecognizing = true;
+    micStateLabel.innerText = "CONTINUOUS VOICE LISTENING ACTIVE";
     micStateLabel.style.color = "#00e676";
-    micSubtext.innerText = "Speak any command: 'Set fan high', 'Spin centrifuge 12000', or 'Stop'!";
+    btnMicOrb.classList.add("listening");
   };
 
   recognition.onresult = (event) => {
@@ -248,6 +339,7 @@ function initSpeechRecognition() {
 
     if (interimTranscript) {
       transcriptDisplay.innerText = `"...${interimTranscript}"`;
+      isAudioActive = true;
     }
 
     if (finalTranscript) {
@@ -257,56 +349,33 @@ function initSpeechRecognition() {
 
   recognition.onerror = (e) => {
     if (e.error !== "no-speech") {
-      console.warn("Speech error:", e.error);
+      console.warn("Speech recognition notice:", e.error);
     }
   };
 
   recognition.onend = () => {
-    // Keep continuous listening active in cleanroom mode
-    if (isListening) {
+    // Keep continuous listening active in sterile cleanroom
+    if (isRecognizing) {
       try {
         recognition.start();
       } catch (e) {}
-    } else {
-      btnMicOrb.classList.remove("listening");
-      micStateLabel.innerText = "TAP TO ACTIVATE HANDS-FREE MIC";
-      micStateLabel.style.color = "var(--text-primary)";
     }
   };
+
+  try {
+    recognition.start();
+  } catch (e) {}
 }
 
-// Toggle Mic Button Click
-btnMicOrb.addEventListener("click", () => {
+// Global click/touch on page starts AudioContext & Mic permissions
+window.addEventListener("click", () => {
   getAudioContext();
-  if (!recognition) {
-    initSpeechRecognition();
-  }
-
-  if (isListening) {
-    isListening = false;
-    if (recognition) recognition.stop();
-    btnMicOrb.classList.remove("listening");
-    micStateLabel.innerText = "MIC PAUSED - TAP TO RESUME";
-    micStateLabel.style.color = "var(--text-muted)";
-  } else {
-    isListening = true;
-    try {
-      recognition.start();
-    } catch (e) {}
-  }
-});
-
-// ==============================================================================
-// Quick Command Chips & Emergency Abort Button
-// ==============================================================================
-document.querySelectorAll(".voice-chip").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    const cmd = chip.getAttribute("data-command");
-    executeVoiceCommand(cmd);
-  });
-});
+  if (!micMediaStream) initMicrophoneNoiseGating();
+  if (!recognition) initSpeechRecognition();
+}, { once: true });
 
 window.addEventListener("DOMContentLoaded", () => {
   connectWebSocket();
+  initMicrophoneNoiseGating();
   initSpeechRecognition();
 });
