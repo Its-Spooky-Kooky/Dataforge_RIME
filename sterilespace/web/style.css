@@ -53,6 +53,7 @@ body.cleanroom-theme {
   justify-content: space-between;
   padding: 0.85rem 2rem;
   background: rgba(10, 15, 26, 0.92);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(0, 229, 255, 0.18);
   position: sticky;
@@ -1052,6 +1053,7 @@ body.cleanroom-theme {
 
 .operator-card {
   background: rgba(13, 20, 32, 0.85);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(0, 229, 255, 0.25);
   border-radius: 20px;
@@ -1145,6 +1147,7 @@ body.cleanroom-theme {
 
 .orb-core {
   font-size: 3rem;
+  -webkit-user-select: none;
   user-select: none;
   display: flex;
   align-items: center;

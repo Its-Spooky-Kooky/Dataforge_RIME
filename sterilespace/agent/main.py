@@ -4,14 +4,23 @@ Hands-free voice copilot for cleanroom and biosafety laboratories.
 """
 
 import os
+import sys
 import asyncio
 import logging
 from typing import Annotated
 from dotenv import load_dotenv
 
-from agent.normalizer import normalize_for_rime
-from agent.state_manager import state_manager
-from server.mock_iot import lab_store
+# Ensure sterilespace root is available in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+try:
+    from agent.normalizer import normalize_for_rime
+    from agent.state_manager import state_manager
+    from server.mock_iot import lab_store
+except ImportError:
+    from sterilespace.agent.normalizer import normalize_for_rime
+    from sterilespace.agent.state_manager import state_manager
+    from sterilespace.server.mock_iot import lab_store
 
 load_dotenv()
 

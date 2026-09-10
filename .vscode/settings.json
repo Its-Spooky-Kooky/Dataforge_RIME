@@ -4,6 +4,10 @@
     "**/.git/subtree-cache/**": true,
     "**/node_modules/**": true,
     "**/__pycache__/**": true
-  }
+  },
+  "python.analysis.extraPaths": [
+    "./sterilespace"
+  ],
+  "css.lint.vendorPrefix": "ignore"
 }
 
