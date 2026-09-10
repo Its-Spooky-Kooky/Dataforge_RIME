@@ -1595,6 +1595,133 @@ body.cleanroom-theme {
 }
 
 /* ==============================================================================
+   Tap-To-Speak Mic & HUD Launch Bar Controls
+   ============================================================================== */
+.mic-orb.tap-ready {
+  background: radial-gradient(circle, #00b0ff 0%, #004080 100%);
+  animation: breatheGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes breatheGlow {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(0, 176, 255, 0.35), inset 0 0 15px rgba(255, 255, 255, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(0, 229, 255, 0.7), inset 0 0 25px rgba(255, 255, 255, 0.5);
+    transform: scale(1.04);
+  }
+}
+
+.mic-orb.listening {
+  background: radial-gradient(circle, #00e676 0%, #004d40 100%);
+  box-shadow: 0 0 55px rgba(0, 230, 118, 0.65), inset 0 0 25px rgba(255, 255, 255, 0.5);
+}
+
+.pulse-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #00e676;
+  box-shadow: 0 0 8px #00e676;
+  margin-right: 0.4rem;
+  animation: blinkDot 1s infinite ease-in-out;
+}
+
+.pulse-dot-mini {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 6px var(--accent-cyan);
+}
+
+@keyframes blinkDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* HUD Launch Bar & Tap Button */
+.hud-mic-launch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding: 0.85rem 1.25rem;
+  background: rgba(0, 229, 255, 0.04);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 12px;
+  gap: 1rem;
+}
+
+.hud-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hud-tap-mic-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 50px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(0, 230, 118, 0.2));
+  border: 1px solid var(--accent-cyan);
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.25);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.hud-tap-mic-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 25px rgba(0, 229, 255, 0.45);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.35), rgba(0, 230, 118, 0.35));
+}
+
+.hud-tap-mic-btn.active {
+  background: linear-gradient(135deg, rgba(255, 23, 68, 0.25), rgba(255, 171, 0, 0.25));
+  border-color: #ff1744;
+  box-shadow: 0 0 20px rgba(255, 23, 68, 0.4);
+  color: #ff5252;
+}
+
+.hud-tap-mic-btn.active .pulse-dot-mini {
+  background: #ff1744;
+  box-shadow: 0 0 8px #ff1744;
+  animation: blinkDot 0.8s infinite ease-in-out;
+}
+
+.operator-launch-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.operator-launch-btn:hover {
+  color: #ffffff;
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.1);
+}
+
+/* ==============================================================================
    Responsive Queries
    ============================================================================== */
 @media (max-width: 1024px) {
@@ -1609,6 +1736,10 @@ body.cleanroom-theme {
   }
   .chip-grid {
     grid-template-columns: 1fr;
+  }
+  .hud-mic-launch-bar {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

@@ -303,28 +303,33 @@ async function executeVoiceCommand(transcript) {
 }
 
 // ==============================================================================
-// Continuous Hands-Free Speech Recognition Loop
+// Tap-To-Speak Microphone & Continuous Speech Recognition Loop
 // ==============================================================================
-function initSpeechRecognition() {
+let isMicListening = false;
+
+function setupSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    micSubtext.innerText = "Web Speech recognition not available on this browser. Please use Chrome or Edge.";
-    return;
+    micSubtext.innerText = "Speech recognition is not supported in this browser. Please use Chrome or Edge.";
+    return null;
   }
 
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = "en-US";
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = "en-US";
 
-  recognition.onstart = () => {
+  rec.onstart = () => {
     isRecognizing = true;
-    micStateLabel.innerText = "CONTINUOUS VOICE LISTENING ACTIVE";
-    micStateLabel.style.color = "#00e676";
+    isMicListening = true;
     btnMicOrb.classList.add("listening");
+    btnMicOrb.classList.remove("tap-ready");
+    micStateLabel.innerHTML = '<span class="pulse-dot"></span> LISTENING... SPEAK NOW';
+    micStateLabel.style.color = "#00e676";
+    micSubtext.innerText = "Hands-free mic active. Speak fan, centrifuge, timers, or samples. Tap to mute.";
   };
 
-  recognition.onresult = (event) => {
+  rec.onresult = (event) => {
     let interimTranscript = "";
     let finalTranscript = "";
 
@@ -347,35 +352,96 @@ function initSpeechRecognition() {
     }
   };
 
-  recognition.onerror = (e) => {
-    if (e.error !== "no-speech") {
+  rec.onerror = (e) => {
+    if (e.error === "not-allowed") {
+      micSubtext.innerText = "Microphone blocked. Click the lock icon in the browser address bar to allow mic access.";
+      stopMicrophone();
+    } else if (e.error !== "no-speech") {
       console.warn("Speech recognition notice:", e.error);
     }
   };
 
-  recognition.onend = () => {
-    // Keep continuous listening active in sterile cleanroom
-    if (isRecognizing) {
+  rec.onend = () => {
+    // Keep continuous listening active while in active speaking state
+    if (isRecognizing && isMicListening) {
       try {
-        recognition.start();
+        rec.start();
       } catch (e) {}
     }
   };
 
-  try {
-    recognition.start();
-  } catch (e) {}
+  return rec;
 }
 
-// Global click/touch on page starts AudioContext & Mic permissions
-window.addEventListener("click", () => {
+async function startMicrophone() {
   getAudioContext();
-  if (!micMediaStream) initMicrophoneNoiseGating();
-  if (!recognition) initSpeechRecognition();
-}, { once: true });
+  if (!micMediaStream) {
+    await initMicrophoneNoiseGating();
+  }
+
+  if (!recognition) {
+    recognition = setupSpeechRecognition();
+  }
+
+  if (recognition) {
+    try {
+      isRecognizing = true;
+      recognition.start();
+    } catch (e) {
+      // May already be active
+    }
+  }
+
+  isMicListening = true;
+  btnMicOrb.classList.add("listening");
+  btnMicOrb.classList.remove("tap-ready");
+  micStateLabel.innerHTML = '<span class="pulse-dot"></span> LISTENING... SPEAK NOW';
+  micStateLabel.style.color = "#00e676";
+  micSubtext.innerText = "Hands-free mic active. Speak fan, centrifuge, timers, or samples. Tap to mute.";
+  playCleanroomChime();
+}
+
+function stopMicrophone() {
+  isRecognizing = false;
+  isMicListening = false;
+  if (recognition) {
+    try {
+      recognition.stop();
+    } catch (e) {}
+  }
+
+  btnMicOrb.classList.remove("listening");
+  btnMicOrb.classList.add("tap-ready");
+  micStateLabel.innerText = "TAP TO SPEAK MIC";
+  micStateLabel.style.color = "var(--accent-cyan)";
+  micSubtext.innerText = "Microphone paused. Tap the glowing orb anytime to resume hands-free voice.";
+  playCutoffClick();
+}
+
+function toggleMicrophone() {
+  if (isMicListening) {
+    stopMicrophone();
+  } else {
+    startMicrophone();
+  }
+}
+
+// Wire up Tap-To-Speak on giant mic orb
+if (btnMicOrb) {
+  btnMicOrb.addEventListener("click", (e) => {
+    e.preventDefault();
+    toggleMicrophone();
+  });
+
+  btnMicOrb.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleMicrophone();
+    }
+  });
+}
 
 window.addEventListener("DOMContentLoaded", () => {
   connectWebSocket();
-  initMicrophoneNoiseGating();
-  initSpeechRecognition();
+  btnMicOrb.classList.add("tap-ready");
 });

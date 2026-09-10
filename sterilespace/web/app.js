@@ -666,72 +666,101 @@ if (btnCentrifuge) {
   });
 }
 
-// Live Speech Recognition Toggle (Safely Guarded)
+// Live Speech Recognition Toggle & HUD Tap-To-Speak
 let recognition = null;
 let isMicActive = false;
+const hudTapToSpeak = document.getElementById("hud-tap-to-speak");
+const hudMicLabel = document.getElementById("hud-mic-label");
+
+function toggleHUDMicrophone() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Speech recognition is not supported in this browser. Please open Chrome or Edge!");
+    return;
+  }
+
+  if (isMicActive) {
+    if (recognition) {
+      try { recognition.stop(); } catch (e) {}
+    }
+    isMicActive = false;
+    if (hudMicLabel) hudMicLabel.innerText = "🎙️ TAP TO SPEAK MIC";
+    if (hudTapToSpeak) hudTapToSpeak.classList.remove("active");
+    if (vadStatus) vadStatus.innerText = "IDLE";
+    addLog("SYSTEM", "Microphone muted on Operations HUD.");
+    playCutoffClick();
+  } else {
+    try {
+      getAudioContext();
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        isMicActive = true;
+        if (hudMicLabel) hudMicLabel.innerText = "🔴 LISTENING... SPEAK NOW";
+        if (hudTapToSpeak) hudTapToSpeak.classList.add("active");
+        if (vadStatus) vadStatus.innerText = "VOICE ACTIVE";
+        addLog("SYSTEM", "Microphone listening for hands-free cleanroom voice commands.");
+        playCleanroomChime();
+      };
+
+      recognition.onresult = async (event) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+
+        if (event.results[event.results.length - 1].isFinal) {
+          addLog("SYSTEM", `Heard: "${transcript}"`);
+          const resp = await fetch("/api/simulate/voice-turn", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript })
+          });
+          const resJson = await resp.json();
+          if (resJson.response_normalized_for_rime) {
+            const ttsResp = await fetch("/api/tts/rime", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: resJson.response_normalized_for_rime })
+            });
+            const audioData = await ttsResp.arrayBuffer();
+            await playAudioBuffer(audioData);
+          }
+        }
+      };
+
+      recognition.onerror = (e) => {
+        if (e.error === "not-allowed") {
+          alert("Microphone permission was denied. Please allow microphone in your browser address bar.");
+        }
+      };
+
+      recognition.onend = () => {
+        if (isMicActive) {
+          try { recognition.start(); } catch (e) {}
+        }
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.error("Speech recognition error:", err);
+    }
+  }
+}
+
+if (hudTapToSpeak) {
+  hudTapToSpeak.addEventListener("click", (e) => {
+    e.preventDefault();
+    toggleHUDMicrophone();
+  });
+}
 
 if (btnToggleMic) {
   btnToggleMic.addEventListener("click", () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser. Use the simulation triggers for full functionality!");
-      return;
-    }
-
-    if (isMicActive) {
-      if (recognition) recognition.stop();
-      isMicActive = false;
-      if (micBtnLabel) micBtnLabel.innerText = "Activate Microphone";
-      if (vadStatus) vadStatus.innerText = "IDLE";
-      btnToggleMic.classList.remove("active");
-    } else {
-      try {
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
-
-        recognition.onstart = () => {
-          isMicActive = true;
-          if (micBtnLabel) micBtnLabel.innerText = "Listening (Hands-Free)...";
-          if (vadStatus) vadStatus.innerText = "VOICE ACTIVE";
-          btnToggleMic.classList.add("active");
-          addLog("SYSTEM", "Microphone listening for hands-free cleanroom voice commands.");
-        };
-
-        recognition.onresult = async (event) => {
-          let transcript = "";
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
-          }
-
-          if (event.results[event.results.length - 1].isFinal) {
-            addLog("SYSTEM", `Heard: "${transcript}"`);
-            const resp = await fetch("/api/simulate/voice-turn", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ transcript })
-            });
-            const resJson = await resp.json();
-            if (resJson.response_normalized_for_rime) {
-              const ttsResp = await fetch("/api/tts/rime", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: resJson.response_normalized_for_rime })
-              });
-              const audioData = await ttsResp.arrayBuffer();
-              await playAudioBuffer(audioData);
-            }
-          }
-        };
-
-        recognition.onend = () => {
-          if (isMicActive) recognition.start();
-        recognition.start();
-      } catch (err) {
-        console.error("Speech recognition error:", err);
-      }
-    }
+    toggleHUDMicrophone();
   });
 }
 

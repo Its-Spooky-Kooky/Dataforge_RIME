@@ -243,12 +243,18 @@
 
         <div class="hud-mic-launch-bar">
           <div class="launch-info">
-            <strong>Hands-Free Operator Voice Station</strong>
-            <small>Speak commands on cleanroom headset or mobile terminal</small>
+            <strong>Cleanroom Voice Station</strong>
+            <small>Speak commands hands-free on any cleanroom terminal</small>
           </div>
-          <a href="/operator" class="operator-launch-btn">
-            <span>🎙️ Open Operator Mic &rarr;</span>
-          </a>
+          <div class="hud-action-row">
+            <button id="hud-tap-to-speak" class="hud-tap-mic-btn" title="Tap to Speak Cleanroom Command">
+              <span class="pulse-dot-mini"></span>
+              <span id="hud-mic-label">🎙️ TAP TO SPEAK MIC</span>
+            </button>
+            <a href="/operator" class="operator-launch-btn" title="Open Dedicated Operator Mobile Screen">
+              <span>Full Screen Mic &rarr;</span>
+            </a>
+          </div>
         </div>
       </div>
     </section>
