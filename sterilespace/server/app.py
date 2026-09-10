@@ -339,19 +339,130 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
             "message": "User barged in: pending tool actions were cleanly cancelled."
         }
 
-    # Process compound commands:
-    # e.g., "Log oxidation 15% on tube 4B and turn on ventilation high"
-    lower_t = transcript.lower()
+    # Process natural language commands
+    lower_t = transcript.lower().strip()
+    import re
 
-    if "tube" in lower_t or "sample" in lower_t or "%" in lower_t or "oxidation" in lower_t:
-        # Extract tube ID (e.g. 4B, 12C, A3)
-        import re
+    # 1. IMMEDIATE BARGE-IN / ABORT CHECK
+    abort_words = ["abort", "stop", "halt", "cancel", "shut down", "kill", "wait", "hold on", "emergency"]
+    is_abort = req.simulate_interrupt or any(re.search(r"\b" + re.escape(w) + r"\b", lower_t) for w in abort_words)
+    
+    if is_abort:
+        interruption_metrics = await state_manager.request_interruption("voice_command_abort")
+        await lab_store.emergency_brake_centrifuge()
+        
+        msg = f"Operations halted immediately. Emergency electronic brake engaged. Interruption cutoff verified in {interruption_metrics['cutoff_latency_ms']} milliseconds."
+        norm_msg = normalize_for_rime(msg)
+        return {
+            "status": "INTERRUPTED",
+            "transcript": transcript,
+            "barge_in_metrics": interruption_metrics,
+            "response_raw": msg,
+            "response_normalized_for_rime": norm_msg,
+            "message": "User commanded immediate stop: pending actions cancelled with zero dirty writes."
+        }
+
+    # 2. STATUS / QUERY COMMANDS
+    if any(k in lower_t for k in ["status", "report", "readout", "how is", "check", "temperature", "condition"]):
+        snap = lab_store.get_snapshot()
+        v = snap["ventilation"]
+        c = snap["centrifuge"]
+        e = snap["environment"]
+        msg = (
+            f"Biosafety telemetry report: Cabinet ventilation is {v['state']} at {v['rpm']} R-P-M. "
+            f"Microcentrifuge is {c['state']} at {c['rpm']} R-P-M. "
+            f"Cleanroom temperature is {e['room_temperature_c']} degrees Celsius with {e['sterile_barrier']} glove barrier."
+        )
+        norm_msg = normalize_for_rime(msg)
+        actions_taken.append("Reported laboratory biosafety status")
+        return {
+            "status": "COMPLETED",
+            "transcript": transcript,
+            "actions_taken": actions_taken,
+            "response_raw": msg,
+            "response_normalized_for_rime": norm_msg,
+            "speaker": RIME_SPEAKER,
+            "model_id": RIME_MODEL_ID
+        }
+
+    # 3. VENTILATION / FAN RELAY
+    if any(k in lower_t for k in ["fan", "vent", "ventilation", "exhaust", "hood", "blower"]):
+        is_off = any(k in lower_t for k in ["off", "stop", "shutdown", "disable", "zero", "cut"])
+        state = "OFF" if is_off else "ON"
+        
+        if any(k in lower_t for k in ["purge", "max", "emergency", "maximum", "highest", "3600"]):
+            speed = "EMERGENCY_PURGE"
+        elif any(k in lower_t for k in ["high", "fast", "2400"]):
+            speed = "HIGH"
+        elif any(k in lower_t for k in ["low", "slow", "quiet", "800"]):
+            speed = "LOW"
+        else:
+            speed = "MEDIUM"
+
+        vent = await state_manager.execute_fenced_tool(
+            "set_ventilation",
+            lab_store.set_ventilation,
+            state=state,
+            speed=speed,
+            delay_seconds=0.3
+        )
+        actions_taken.append(f"Ventilation set to {state} ({speed})")
+        if state == "OFF":
+            response_phrases.append("Biosafety cabinet ventilation is now OFF.")
+        else:
+            response_phrases.append(f"Biosafety cabinet ventilation is now {state} at {speed} speed, {vent['rpm']} R-P-M.")
+
+    # 4. CENTRIFUGE
+    if any(k in lower_t for k in ["centrifuge", "spin", "rotor", "rcf"]):
+        is_cent_stop = any(k in lower_t for k in ["stop", "brake", "halt", "off", "cancel"])
+        if is_cent_stop:
+            await lab_store.emergency_brake_centrifuge()
+            actions_taken.append("Centrifuge electronic brake engaged")
+            response_phrases.append("Centrifuge electronic brake engaged. Rotor stopped.")
+        else:
+            rpm_match = re.search(r"\b([0-9]{3,5})\b", transcript)
+            target_rpm = int(rpm_match.group(1)) if rpm_match else 12000
+            target_rpm = max(1000, min(14000, target_rpm))
+            
+            dur_match = re.search(r"\b([0-9]{1,3})\s*(?:min|minute|sec|second)", transcript, re.IGNORECASE)
+            duration_sec = 60
+            if dur_match:
+                val = int(dur_match.group(1))
+                duration_sec = val * 60 if "min" in dur_match.group(0).lower() else val
+
+            cent_res = await state_manager.execute_fenced_tool(
+                "run_centrifuge",
+                lab_store.run_centrifuge,
+                target_rpm=target_rpm,
+                duration_sec=duration_sec,
+                delay_seconds=0.4
+            )
+            actions_taken.append(f"Centrifuge spinning at {target_rpm} RPM ({cent_res['g_force']} g-force)")
+            response_phrases.append(f"Microcentrifuge active at {target_rpm} R-P-M for {duration_sec} seconds.")
+
+    # 5. SAMPLE / OBSERVATION LOGGING
+    if any(k in lower_t for k in ["tube", "sample", "log", "record", "%", "percent", "oxidation", "ph", "titrate"]):
         tube_match = re.search(r"\b([0-9]{1,3}[a-zA-Z]|[a-zA-Z][0-9]{1,3})\b", transcript)
         tube_id = tube_match.group(1).upper() if tube_match else "4B"
 
-        metric = "oxidation" if "oxidation" in lower_t else ("pH" if "ph" in lower_t else "metric")
-        value = 15.0 if "15" in transcript else 7.4
-        unit = "%" if "%" in transcript or "percent" in lower_t else ("pH" if metric == "pH" else "units")
+        metric = "oxidation"
+        if "ph" in lower_t:
+            metric = "pH"
+        elif "temp" in lower_t or "celsius" in lower_t:
+            metric = "temperature"
+        elif "concentration" in lower_t or "mg" in lower_t:
+            metric = "concentration"
+
+        val_match = re.search(r"\b([0-9]+(?:\.[0-9]+)?)\b", transcript)
+        value = float(val_match.group(1)) if val_match else (15.0 if metric == "oxidation" else 7.4)
+
+        unit = "%"
+        if metric == "pH":
+            unit = "pH"
+        elif metric == "temperature":
+            unit = "°C"
+        elif metric == "concentration":
+            unit = "mg/mL"
 
         record = await state_manager.execute_fenced_tool(
             "log_sample_observation",
@@ -360,46 +471,13 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
             metric=metric,
             value=value,
             unit=unit,
-            delay_seconds=0.5  # Snappy execution for direct API
+            delay_seconds=0.3
         )
         actions_taken.append(f"Logged {metric} {value}{unit} for tube {tube_id}")
-        response_phrases.append(f"Observation logged for tube {tube_id} at {value} {unit}.")
-
-    if "ventilation" in lower_t or "fan" in lower_t:
-        speed = "HIGH" if "high" in lower_t else ("LOW" if "low" in lower_t else "MEDIUM")
-        state = "OFF" if "off" in lower_t else "ON"
-
-        vent = await state_manager.execute_fenced_tool(
-            "set_ventilation",
-            lab_store.set_ventilation,
-            state=state,
-            speed=speed,
-            delay_seconds=0.5
-        )
-        actions_taken.append(f"Ventilation set to {state} ({speed})")
-        response_phrases.append(f"Biosafety cabinet ventilation is now {state} at {speed} speed.")
-
-    if "centrifuge" in lower_t or "spin" in lower_t:
-        rpm_match = re.search(r"\b([0-9]{3,5})\s*(?:rpm)?\b", transcript, re.IGNORECASE)
-        target_rpm = int(rpm_match.group(1)) if rpm_match else 12000
-        dur_match = re.search(r"\b([0-9]{1,3})\s*(?:min|minute|sec|second)", transcript, re.IGNORECASE)
-        duration_sec = 60
-        if dur_match:
-            val = int(dur_match.group(1))
-            duration_sec = val * 60 if "min" in dur_match.group(0).lower() else val
-
-        cent_res = await state_manager.execute_fenced_tool(
-            "run_centrifuge",
-            lab_store.run_centrifuge,
-            target_rpm=target_rpm,
-            duration_sec=duration_sec,
-            delay_seconds=0.6
-        )
-        actions_taken.append(f"Centrifuge spinning at {target_rpm} RPM ({cent_res['g_force']} g-force)")
-        response_phrases.append(f"Microcentrifuge active at {target_rpm} R-P-M for {duration_sec} seconds.")
+        response_phrases.append(f"Observation logged for tube {tube_id}: {metric} is {value} {unit}.")
 
     if not actions_taken:
-        response_phrases.append("SterileSpace copilot standing by. What observation or cabinet setting should I execute?")
+        response_phrases.append("SterileSpace standing by. Command biosafety fan, centrifuge, or sample observation.")
 
     combined_response = " ".join(response_phrases)
     normalized_response = normalize_for_rime(combined_response)
@@ -428,9 +506,7 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
     })
     try:
         while True:
-            # Keep-alive or client incoming command handling
             msg = await websocket.receive_text()
-            # If client sends ping or command
             if msg == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
@@ -438,8 +514,24 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
             connected_clients.remove(websocket)
 
 
-# Mount static web directory
+# HTML View Endpoints
+from fastapi.responses import FileResponse
+
 web_dir = os.path.join(os.path.dirname(__file__), "..", "web")
+
+@app.get("/operator")
+@app.get("/mic")
+async def serve_operator():
+    """Cleanroom Operator Voice Terminal Interface."""
+    return FileResponse(os.path.join(web_dir, "operator.html"))
+
+@app.get("/")
+@app.get("/hud")
+async def serve_hud():
+    """Cleanroom Wall Operations Telemetry Dashboard."""
+    return FileResponse(os.path.join(web_dir, "index.html"))
+
+# Mount static files
 if os.path.isdir(web_dir):
     app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
 

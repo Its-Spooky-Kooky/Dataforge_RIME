@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SterileSpace - Cleanroom Operator Voice Terminal</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="cleanroom-theme operator-view">
+  <!-- Top Navigation Header with Dual Interface Switcher -->
+  <header class="lab-header">
+    <div class="header-left">
+      <div class="logo-mark">
+        <span class="pulse-ring"></span>
+        <span class="logo-icon">☣</span>
+      </div>
+      <div>
+        <h1 class="brand-title">SterileSpace</h1>
+        <span class="sub-brand">Technician Voice Terminal</span>
+      </div>
+    </div>
+
+    <!-- Interface Mode Switcher -->
+    <div class="interface-switcher">
+      <a href="/operator" class="switch-tab active">
+        <span class="tab-icon">🎙️</span>
+        <span>Operator Mic</span>
+      </a>
+      <a href="/hud" class="switch-tab">
+        <span class="tab-icon">🖥️</span>
+        <span>Operations HUD</span>
+      </a>
+    </div>
+
+    <div class="header-right">
+      <div class="status-pill barrier-badge">
+        <span class="shield-icon">🛡️</span>
+        <span>GLOVE BARRIER: <strong class="glow-cyan">ACTIVE</strong></span>
+      </div>
+      <div id="ws-status" class="status-pill ws-badge connected">
+        <span class="status-indicator"></span>
+        <span>Wall Display Synced</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Operator Hands-Free Voice Studio -->
+  <main class="operator-container">
+    <div class="operator-card">
+      <div class="operator-status-header">
+        <span class="status-tag live-glow-tag">HANDS-FREE BIO-SAFETY COPILOT</span>
+        <div class="tts-pill">
+          <span>Active TTS:</span>
+          <strong>Rime Coda (astra)</strong>
+        </div>
+      </div>
+
+      <!-- Giant Interactive Glowing Mic Orb -->
+      <div class="mic-orb-wrapper">
+        <button id="btn-mic-orb" class="mic-orb" title="Click to Toggle Hands-Free Microphone">
+          <div class="orb-ring ring-1"></div>
+          <div class="orb-ring ring-2"></div>
+          <div class="orb-core">
+            <span class="orb-icon" id="mic-icon">🎙️</span>
+          </div>
+        </button>
+        <div class="mic-state-label" id="mic-state-label">TAP OR SPEAK HANDS-FREE</div>
+        <div class="mic-subtext" id="mic-subtext">Continuous voice recognition active. Speak laboratory commands naturally.</div>
+      </div>
+
+      <!-- Live Voice Waveform -->
+      <div class="voice-wave-container">
+        <canvas id="voice-canvas" width="500" height="70"></canvas>
+      </div>
+
+      <!-- Transcript & Copilot Response Feed -->
+      <div class="speech-feed">
+        <div class="feed-bubble user-bubble">
+          <span class="bubble-speaker">OPERATOR (VOICE INPUT):</span>
+          <p id="transcript-display">"Say: 'Set fan high', 'Spin centrifuge 12000', or 'Log tube 4B 15%'"</p>
+        </div>
+
+        <div class="feed-bubble copilot-bubble">
+          <div class="bubble-header-row">
+            <span class="bubble-speaker">STERILESPACE (RIME TTS):</span>
+            <span class="audio-tag" id="tts-audio-tag">READY</span>
+          </div>
+          <p id="response-display">"Standing by for cleanroom commands. Hands-free voice operating barrier active."</p>
+        </div>
+      </div>
+
+      <!-- Quick Cleanroom Spoken Command Chips -->
+      <div class="quick-commands-section">
+        <span class="qc-title">TOUCHLESS QUICK VOICE COMMANDS (CLICK OR SPEAK):</span>
+        <div class="chip-grid">
+          <button class="voice-chip" data-command="Turn on ventilation high">
+            <span class="chip-icon">🌀</span>
+            <span class="chip-text">"Fan HIGH" (2400 RPM)</span>
+          </button>
+          <button class="voice-chip" data-command="Turn off ventilation">
+            <span class="chip-icon">🛑</span>
+            <span class="chip-text">"Fan OFF"</span>
+          </button>
+          <button class="voice-chip" data-command="Spin microcentrifuge at 12000 RPM for 60 seconds">
+            <span class="chip-icon">⚡</span>
+            <span class="chip-text">"Spin Centrifuge" (12,000 RPM)</span>
+          </button>
+          <button class="voice-chip" data-command="Log oxidation 15% on tube 4B">
+            <span class="chip-icon">🧪</span>
+            <span class="chip-text">"Log Tube 4B" (15% Oxidation)</span>
+          </button>
+          <button class="voice-chip" data-command="What is the cleanroom status?">
+            <span class="chip-icon">📊</span>
+            <span class="chip-text">"Cleanroom Status"</span>
+          </button>
+          <button class="voice-chip chip-emergency" id="btn-emergency-abort" data-command="ABORT IMMEDIATELY! STOP!">
+            <span class="chip-icon">🚨</span>
+            <span class="chip-text">"EMERGENCY ABORT" (&lt;180ms)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="operator-footer">
+        <span>Connected to Wall Display via WebSocket • Actions automatically update the Operations HUD</span>
+        <a href="/hud" class="hud-link">Open Wall Operations HUD &rarr;</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="operator.js"></script>
+</body>
+</html>
