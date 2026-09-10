@@ -215,3 +215,4 @@ class MockLabStore:
 
 # Global singleton instance
 lab_store = MockLabStore()
+

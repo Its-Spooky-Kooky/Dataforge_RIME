@@ -333,3 +333,4 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
 web_dir = os.path.join(os.path.dirname(__file__), "..", "web")
 if os.path.isdir(web_dir):
     app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
+

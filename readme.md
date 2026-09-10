@@ -9,3 +9,4 @@ The complete project is located in [`sterilespace/`](sterilespace/):
 - **Automated CLI Benchmark**: `python sterilespace/evals/test_interruption.py`
 - **FastAPI Web HUD Server**: `python -m uvicorn server.app:app --app-dir sterilespace --host 0.0.0.0 --port 8000 --reload`
 - **LiveKit Agent Worker**: `python sterilespace/agent/main.py`
+

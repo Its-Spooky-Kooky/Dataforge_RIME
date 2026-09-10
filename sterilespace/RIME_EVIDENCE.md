@@ -169,3 +169,4 @@ The frontend laboratory HUD demonstrates voice interactions in real time:
 - **Simulated IoT Fan Relay**: Multi-blade SVG/CSS fan spinning dynamically from 0 RPM (stopped) to 3600 RPM (emergency purge).
 - **Oscilloscope Waveform**: Canvas audio visualizer reacting to operator voice input and Rime TTS audio streaming.
 - **Simulation Control Panel**: One-click triggers for Compound Spoken Commands, Barge-In Interruption simulation, and Lab Phonetics tests.
+

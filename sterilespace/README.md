@@ -91,3 +91,4 @@ python agent/main.py dev
 - **Average Interruption Cutoff Latency**: **0.11 ms** (Target: `< 180 ms` — **PASSED**)
 - **State Integrity on Barge-In**: **100% Rollback** (Zero corrupt commits on cancelled tasks)
 - Detailed results available in [`RIME_EVIDENCE.md`](RIME_EVIDENCE.md).
+

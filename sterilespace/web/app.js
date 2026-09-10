@@ -456,3 +456,4 @@ btnToggleMic.addEventListener("click", () => {
 window.addEventListener("DOMContentLoaded", () => {
   connectWebSocket();
 });
+
