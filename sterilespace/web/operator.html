@@ -117,9 +117,27 @@
         </div>
       </div>
 
-      <!-- Spoken Command Reference Guide (Text Only, No Buttons) -->
+      <!-- Direct Spoken Command Input Bar & Quick Voice Simulation Chips -->
+      <div class="voice-input-section">
+        <div class="voice-input-row">
+          <input type="text" id="manual-voice-input" class="voice-text-input" placeholder="Speak into mic or type e.g. 'fan high', 'centrifuge 12000 RPM', 'set timer 30s'..." />
+          <button id="btn-send-voice" class="voice-send-btn">
+            <span>Send Turn ↵</span>
+          </button>
+        </div>
+        <div class="quick-chips-row">
+          <button class="voice-chip-btn" data-cmd="Fan high">🌀 Fan High</button>
+          <button class="voice-chip-btn" data-cmd="Fan off">🌀 Fan Off</button>
+          <button class="voice-chip-btn" data-cmd="Spin microcentrifuge at 12000 RPM for 45 seconds">⚡ Spin 12000 RPM</button>
+          <button class="voice-chip-btn" data-cmd="Set timer for 30 seconds">⏱️ Timer 30s</button>
+          <button class="voice-chip-btn" data-cmd="Log 15% oxidation on tube 4B">🧪 Log 4B</button>
+          <button class="voice-chip-btn chip-abort" data-cmd="ABORT!">🛑 ABORT!</button>
+        </div>
+      </div>
+
+      <!-- Spoken Command Reference Guide -->
       <div class="voice-guide-section">
-        <span class="guide-title">SPOKEN CLEANROOM COMMANDS (VOICE DRIVEN ONLY):</span>
+        <span class="guide-title">SPOKEN CLEANROOM COMMAND REFERENCE:</span>
         <div class="guide-grid">
           <div class="guide-item">
             <span class="guide-cmd">"Fan high" / "Fan off"</span>

@@ -706,18 +706,21 @@ function toggleHUDMicrophone() {
         playCleanroomChime();
       };
 
-      recognition.onresult = async (event) => {
-        let transcript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
+      let hudSilenceTimer = null;
+      let lastHudCommand = "";
 
-        if (event.results[event.results.length - 1].isFinal) {
-          addLog("SYSTEM", `Heard: "${transcript}"`);
+      const commitHudSpeech = async (transcriptText) => {
+        transcriptText = transcriptText.trim();
+        if (!transcriptText || transcriptText.toLowerCase() === lastHudCommand.toLowerCase()) return;
+        lastHudCommand = transcriptText;
+        setTimeout(() => { lastHudCommand = ""; }, 1800);
+
+        addLog("SYSTEM", `Heard: "${transcriptText}"`);
+        try {
           const resp = await fetch("/api/simulate/voice-turn", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transcript })
+            body: JSON.stringify({ transcript: transcriptText })
           });
           const resJson = await resp.json();
           if (resJson.response_normalized_for_rime) {
@@ -729,12 +732,41 @@ function toggleHUDMicrophone() {
             const audioData = await ttsResp.arrayBuffer();
             await playAudioBuffer(audioData);
           }
+        } catch (e) {
+          console.error("Voice turn error:", e);
+        }
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = "";
+        let isFinalFlag = false;
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+          if (event.results[i].isFinal) isFinalFlag = true;
+        }
+        transcript = transcript.trim();
+        if (!transcript) return;
+
+        if (vadStatus) vadStatus.innerText = `HEARING: "${transcript.slice(0, 20)}..."`;
+
+        if (hudSilenceTimer) clearTimeout(hudSilenceTimer);
+
+        if (isFinalFlag) {
+          commitHudSpeech(transcript);
+        } else {
+          // Auto-commit speech on 750ms of silence
+          hudSilenceTimer = setTimeout(() => {
+            commitHudSpeech(transcript);
+          }, 750);
         }
       };
 
       recognition.onerror = (e) => {
         if (e.error === "not-allowed") {
           alert("Microphone permission was denied. Please allow microphone in your browser address bar.");
+        } else if (e.error !== "no-speech") {
+          console.warn("HUD speech notice:", e.error);
         }
       };
 

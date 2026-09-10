@@ -303,14 +303,16 @@ async function executeVoiceCommand(transcript) {
 }
 
 // ==============================================================================
-// Tap-To-Speak Microphone & Continuous Speech Recognition Loop
+// Tap-To-Speak Microphone with Silence Auto-Commit & Continuous Speech Recognition
 // ==============================================================================
 let isMicListening = false;
+let speechSilenceTimeout = null;
+let lastExecutedCommand = "";
 
 function setupSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    micSubtext.innerText = "Speech recognition is not supported in this browser. Please use Chrome or Edge.";
+    if (micSubtext) micSubtext.innerText = "Speech recognition is not natively supported in this browser. Use the voice turn input bar below!";
     return null;
   }
 
@@ -322,40 +324,79 @@ function setupSpeechRecognition() {
   rec.onstart = () => {
     isRecognizing = true;
     isMicListening = true;
-    btnMicOrb.classList.add("listening");
-    btnMicOrb.classList.remove("tap-ready");
-    micStateLabel.innerHTML = '<span class="pulse-dot"></span> LISTENING... SPEAK NOW';
-    micStateLabel.style.color = "#00e676";
-    micSubtext.innerText = "Hands-free mic active. Speak fan, centrifuge, timers, or samples. Tap to mute.";
+    if (btnMicOrb) {
+      btnMicOrb.classList.add("listening");
+      btnMicOrb.classList.remove("tap-ready");
+    }
+    if (micStateLabel) {
+      micStateLabel.innerHTML = '<span class="pulse-dot"></span> LISTENING... SPEAK NOW';
+      micStateLabel.style.color = "#00e676";
+    }
+    if (micSubtext) micSubtext.innerText = "Cleanroom mic live! Speak commands like 'Fan high', 'Centrifuge 12000 RPM', 'Timer 30s'.";
   };
 
   rec.onresult = (event) => {
-    let interimTranscript = "";
-    let finalTranscript = "";
+    let interimText = "";
+    let isFinalFlag = false;
 
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      const trans = event.results[i][0].transcript;
+      const text = event.results[i][0].transcript;
+      interimText += text;
       if (event.results[i].isFinal) {
-        finalTranscript += trans;
-      } else {
-        interimTranscript += trans;
+        isFinalFlag = true;
       }
     }
 
-    if (interimTranscript) {
-      transcriptDisplay.innerText = `"...${interimTranscript}"`;
-      isAudioActive = true;
+    interimText = interimText.trim();
+    if (!interimText) return;
+
+    // Show live what the mic is picking up in real time
+    if (transcriptDisplay) {
+      transcriptDisplay.innerText = `"${interimText}"`;
+      transcriptDisplay.style.color = "#00e5ff";
+    }
+    isAudioActive = true;
+
+    // Clear any existing silence timer
+    if (speechSilenceTimeout) {
+      clearTimeout(speechSilenceTimeout);
     }
 
-    if (finalTranscript) {
-      executeVoiceCommand(finalTranscript.trim());
+    const triggerCommand = (cmd) => {
+      cmd = cmd.trim();
+      if (!cmd) return;
+      if (cmd.toLowerCase() === lastExecutedCommand.toLowerCase()) return;
+      lastExecutedCommand = cmd;
+      // Allow repeated commands after 1.8 seconds
+      setTimeout(() => { lastExecutedCommand = ""; }, 1800);
+      executeVoiceCommand(cmd);
+    };
+
+    // If browser flagged isFinal, commit immediately!
+    if (isFinalFlag) {
+      triggerCommand(interimText);
+    } else {
+      // Crucial: Auto-commit speech after 750ms of silence even if Chrome didn't set isFinal
+      speechSilenceTimeout = setTimeout(() => {
+        if (interimText.length > 1) {
+          triggerCommand(interimText);
+        }
+      }, 750);
     }
   };
 
   rec.onerror = (e) => {
     if (e.error === "not-allowed") {
-      micSubtext.innerText = "Microphone blocked. Click the lock icon in the browser address bar to allow mic access.";
+      if (micSubtext) micSubtext.innerText = "⚠️ Microphone blocked. Click the lock/camera icon in your browser address bar to allow microphone access.";
       stopMicrophone();
+    } else if (e.error === "network") {
+      if (micSubtext) micSubtext.innerText = "Speech API network notice. Retrying connection...";
+      // Auto-restart on network glitch
+      setTimeout(() => {
+        if (isMicListening) {
+          try { rec.start(); } catch (err) {}
+        }
+      }, 1000);
     } else if (e.error !== "no-speech") {
       console.warn("Speech recognition notice:", e.error);
     }
@@ -387,34 +428,43 @@ async function startMicrophone() {
     try {
       isRecognizing = true;
       recognition.start();
-    } catch (e) {
-      // May already be active
-    }
+    } catch (e) {}
   }
 
   isMicListening = true;
-  btnMicOrb.classList.add("listening");
-  btnMicOrb.classList.remove("tap-ready");
-  micStateLabel.innerHTML = '<span class="pulse-dot"></span> LISTENING... SPEAK NOW';
-  micStateLabel.style.color = "#00e676";
-  micSubtext.innerText = "Hands-free mic active. Speak fan, centrifuge, timers, or samples. Tap to mute.";
+  if (btnMicOrb) {
+    btnMicOrb.classList.add("listening");
+    btnMicOrb.classList.remove("tap-ready");
+  }
+  if (micStateLabel) {
+    micStateLabel.innerHTML = '<span class="pulse-dot"></span> LISTENING... SPEAK NOW';
+    micStateLabel.style.color = "#00e676";
+  }
+  if (micSubtext) micSubtext.innerText = "Cleanroom mic live! Speak commands like 'Fan high', 'Centrifuge 12000 RPM', 'Timer 30s'. Tap to mute.";
   playCleanroomChime();
 }
 
 function stopMicrophone() {
   isRecognizing = false;
   isMicListening = false;
+  if (speechSilenceTimeout) {
+    clearTimeout(speechSilenceTimeout);
+  }
   if (recognition) {
     try {
       recognition.stop();
     } catch (e) {}
   }
 
-  btnMicOrb.classList.remove("listening");
-  btnMicOrb.classList.add("tap-ready");
-  micStateLabel.innerText = "TAP TO SPEAK MIC";
-  micStateLabel.style.color = "var(--accent-cyan)";
-  micSubtext.innerText = "Microphone paused. Tap the glowing orb anytime to resume hands-free voice.";
+  if (btnMicOrb) {
+    btnMicOrb.classList.remove("listening");
+    btnMicOrb.classList.add("tap-ready");
+  }
+  if (micStateLabel) {
+    micStateLabel.innerText = "TAP TO SPEAK MIC";
+    micStateLabel.style.color = "var(--accent-cyan)";
+  }
+  if (micSubtext) micSubtext.innerText = "Microphone paused. Tap the glowing orb anytime to resume hands-free voice.";
   playCutoffClick();
 }
 
@@ -441,7 +491,46 @@ if (btnMicOrb) {
   });
 }
 
+// Wire up Manual Voice Turn Input & Quick Simulation Chips
+const manualVoiceInput = document.getElementById("manual-voice-input");
+const btnSendVoice = document.getElementById("btn-send-voice");
+
+function sendManualVoiceTurn() {
+  if (!manualVoiceInput) return;
+  const val = manualVoiceInput.value.trim();
+  if (!val) return;
+  manualVoiceInput.value = "";
+  executeVoiceCommand(val);
+}
+
+if (btnSendVoice) {
+  btnSendVoice.addEventListener("click", (e) => {
+    e.preventDefault();
+    sendManualVoiceTurn();
+  });
+}
+
+if (manualVoiceInput) {
+  manualVoiceInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendManualVoiceTurn();
+    }
+  });
+}
+
+// Wire up Quick Test Chips
+document.querySelectorAll(".voice-chip-btn").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    const cmd = btn.getAttribute("data-cmd");
+    if (cmd) {
+      executeVoiceCommand(cmd);
+    }
+  });
+});
+
 window.addEventListener("DOMContentLoaded", () => {
   connectWebSocket();
-  btnMicOrb.classList.add("tap-ready");
+  if (btnMicOrb) btnMicOrb.classList.add("tap-ready");
 });
