@@ -164,9 +164,13 @@ FINAL EVALUATION VERDICT
 ## 5. UI Architecture & Reactive HUD
 
 The frontend laboratory HUD demonstrates voice interactions in real time:
-- **Status Badges**: Live connection status, Rime TTS provider pill, and glove barrier alert.
+- **Status Badges & Rime Selector**: Live connection status, on-the-fly model switching (Rime Coda vs Mist v3), speaker selection (`astra` vs `luna`), and glove barrier alert.
+- **A/B Pronunciation Showcase Player**: Side-by-side audio preview allowing judges to hear Naive TTS (un-normalized, garbled) vs SterileSpace + Rime (normalized phonetic fluency).
+- **Interruption Benchmark Latency Histogram**: Real-time visual bar chart tracking recent barge-in cutoff timings against the strict `< 180 ms` rubric threshold.
+- **Multi-Equipment Cleanroom IoT**:
+  - Multi-blade animated exhaust fan (0 to 3600 RPM).
+  - High-speed microcentrifuge (0 to 14,000 RPM, up to 16,000 × g) with electronic emergency brake cutoff on barge-in.
 - **Real-Time Data Grid**: Dynamically flashes neon-green on successful sample logging, and flashes red on interrupted aborts.
-- **Simulated IoT Fan Relay**: Multi-blade SVG/CSS fan spinning dynamically from 0 RPM (stopped) to 3600 RPM (emergency purge).
-- **Oscilloscope Waveform**: Canvas audio visualizer reacting to operator voice input and Rime TTS audio streaming.
-- **Simulation Control Panel**: One-click triggers for Compound Spoken Commands, Barge-In Interruption simulation, and Lab Phonetics tests.
+- **FFT Audio Spectrogram Visualizer**: Web Audio API real-time frequency bar analyzer with procedurally synthesized cleanroom chimes and cutoff clicks.
+- **FDA 21 CFR Part 11 Audit Trail**: Every voice transaction is timestamped, attributed to the operator, and stamped with a cryptographic SHA-256 verification hash, exportable to CSV/JSON.
 

@@ -142,6 +142,27 @@ class LabPhoneticNormalizer:
 
         text = re.sub(r"\b([0-9]+)\s*RPM\b", rpm_repl, text, flags=re.IGNORECASE)
 
+        # G-Force / RCF: e.g. 12000g or 14000 g or 12,000g
+        def g_force_repl(match):
+            raw_n = match.group(1).replace(",", "")
+            num = int(raw_n)
+            return f"{number_to_words(num)} g-force"
+
+        text = re.sub(r"\b([0-9,]+)\s*(?:g|rcf|RCF)\b", g_force_repl, text)
+
+        # Durations: e.g. 3 min / 3 minutes, 30 sec / 30 seconds
+        def min_repl(match):
+            num = int(match.group(1))
+            return f"{number_to_words(num)} minutes"
+
+        text = re.sub(r"\b([0-9]+)\s*(?:min|mins|minutes)\b", min_repl, text, flags=re.IGNORECASE)
+
+        def sec_repl(match):
+            num = int(match.group(1))
+            return f"{number_to_words(num)} seconds"
+
+        text = re.sub(r"\b([0-9]+)\s*(?:sec|secs|seconds)\b", sec_repl, text, flags=re.IGNORECASE)
+
         # Percent: 15% or 0.5%
         def pct_repl(match):
             num_str = match.group(1)

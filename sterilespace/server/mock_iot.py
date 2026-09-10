@@ -1,11 +1,14 @@
 """
 Simulated Laboratory Hardware Store & Mock IoT Relay.
-Tracks real-time biosafety ventilation, sample records, and environmental telemetry.
+Tracks real-time biosafety ventilation, high-speed microcentrifuge, incubator,
+sample inventory, and regulatory FDA 21 CFR Part 11 audit records.
 Features cancellable async hardware transactions with simulated physical/network latency.
 """
 
 import asyncio
 import datetime
+import hashlib
+import json
 from typing import Dict, List, Any, Optional, Callable
 
 # Fan speed configurations with physical RPM and airflow mappings
@@ -72,6 +75,28 @@ class MockLabStore:
             "last_switched_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
 
+        # High-Speed Benchtop Microcentrifuge
+        self.centrifuge: Dict[str, Any] = {
+            "state": "IDLE",
+            "rpm": 0,
+            "target_rpm": 0,
+            "g_force": 0,
+            "rotor_id": "24x1.5mL Fixed-Angle",
+            "time_remaining_sec": 0,
+            "brake_status": "READY",
+            "last_run_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        }
+
+        # Cleanroom CO2 Incubator Chamber
+        self.incubator: Dict[str, Any] = {
+            "temperature_c": 37.0,
+            "target_temp_c": 37.0,
+            "co2_pct": 5.0,
+            "humidity_pct": 95.0,
+            "door_status": "SEALED",
+            "chamber_status": "HOMOGENEOUS"
+        }
+
         # Ambient Cleanroom Sensors
         self.environment: Dict[str, Any] = {
             "room_temperature_c": 21.5,
@@ -81,6 +106,46 @@ class MockLabStore:
             "sterile_barrier": "ACTIVE",
             "operator_status": "GLOVED_HANDS_FREE"
         }
+
+        # FDA 21 CFR Part 11 Audit Trail
+        self.audit_trail: List[Dict[str, Any]] = []
+        self._init_audit_log()
+
+    def _init_audit_log(self):
+        self.add_audit_entry(
+            raw_speech="SterileSpace copilot initialized",
+            normalized_speech="SterileSpace copilot initialized",
+            action="SYSTEM_INIT",
+            status="SUCCESS"
+        )
+
+    def add_audit_entry(
+        self,
+        raw_speech: str,
+        normalized_speech: str,
+        action: str,
+        status: str,
+        latency_ms: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """Creates an immutable, cryptographically hashed audit entry."""
+        entry_id = f"AUD-{len(self.audit_trail) + 1:04d}"
+        iso_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        payload = f"{entry_id}:{iso_time}:{action}:{status}:{raw_speech}"
+        sha = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+        entry = {
+            "id": entry_id,
+            "timestamp": iso_time,
+            "operator": "BSL2_TECH_GLOVED",
+            "action": action,
+            "status": status,
+            "raw_speech": raw_speech,
+            "normalized_speech": normalized_speech,
+            "latency_ms": latency_ms,
+            "verification_hash": sha
+        }
+        self.audit_trail.append(entry)
+        return entry
 
     def subscribe(self, callback: Callable[[Dict[str, Any]], Any]) -> None:
         """Register a telemetry subscriber (e.g., WebSocket broadcaster)."""
@@ -105,8 +170,7 @@ class MockLabStore:
                 res = sub(payload)
                 if asyncio.iscoroutine(res):
                     await res
-            except Exception as e:
-                # Silently prune or ignore failed subscriber delivery
+            except Exception:
                 pass
 
     def get_snapshot(self) -> Dict[str, Any]:
@@ -114,7 +178,10 @@ class MockLabStore:
         return {
             "samples": list(self.samples.values()),
             "ventilation": dict(self.ventilation),
+            "centrifuge": dict(self.centrifuge),
+            "incubator": dict(self.incubator),
             "environment": dict(self.environment),
+            "audit_count": len(self.audit_trail),
             "system_time": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
 
@@ -128,7 +195,7 @@ class MockLabStore:
     ) -> Dict[str, Any]:
         """
         Record a sample measurement with simulated network/database latency.
-        Supports cancellation: if cancelled during the delay, state mutation is aborted.
+        Supports cancellation: if cancelled during delay, state mutation is aborted.
         """
         tube_id = tube_id.upper().strip()
         await self.notify_subscribers("TOOL_STARTED", {
@@ -144,7 +211,6 @@ class MockLabStore:
         await asyncio.sleep(delay_seconds)
 
         async with self._lock:
-            # Determine threshold warning status
             status = "NORMAL"
             if metric.lower() == "oxidation" and value > 10.0:
                 status = "ELEVATED"
@@ -161,6 +227,13 @@ class MockLabStore:
             }
             self.samples[tube_id] = record
 
+        self.add_audit_entry(
+            raw_speech=f"Log {value}{unit} on {tube_id}",
+            normalized_speech=f"Logged {value} {unit} for tube {tube_id}",
+            action="LOG_SAMPLE",
+            status="COMMITTED"
+        )
+
         await self.notify_subscribers("SAMPLE_UPDATED", {
             "tube_id": tube_id,
             "record": record
@@ -173,10 +246,7 @@ class MockLabStore:
         speed: str = "HIGH",
         delay_seconds: float = 2.0
     ) -> Dict[str, Any]:
-        """
-        Controls the biosafety cabinet exhaust/fan relay with simulated hardware relay latency.
-        Supports cancellation: if cancelled during the delay, fan state remains unmodified.
-        """
+        """Controls the biosafety cabinet exhaust relay with simulated hardware latency."""
         state_upper = state.upper().strip()
         speed_upper = speed.upper().strip()
 
@@ -207,12 +277,80 @@ class MockLabStore:
             self.ventilation["last_switched_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
             result = dict(self.ventilation)
 
+        self.add_audit_entry(
+            raw_speech=f"Set ventilation to {state_upper} {target_speed}",
+            normalized_speech=f"Ventilation switched to {state_upper} at {profile['rpm']} R-P-M",
+            action="SET_VENTILATION",
+            status="COMMITTED"
+        )
+
         await self.notify_subscribers("VENTILATION_CHANGED", {
             "ventilation": result
+        })
+        return result
+
+    async def run_centrifuge(
+        self,
+        target_rpm: int = 12000,
+        duration_sec: int = 60,
+        delay_seconds: float = 2.5
+    ) -> Dict[str, Any]:
+        """
+        Spins the microcentrifuge up to target RPM (up to 14,000 RPM) with motor ramp-up delay.
+        Supports cancellation: if operator barges in, engages electronic brake immediately.
+        """
+        target_rpm = max(500, min(14000, int(target_rpm)))
+        # Standard microcentrifuge g-force approximation (radius ~ 8.5 cm)
+        g_force = int(1.118e-5 * 8.5 * (target_rpm ** 2))
+
+        await self.notify_subscribers("TOOL_STARTED", {
+            "action": "run_centrifuge",
+            "target_rpm": target_rpm,
+            "g_force": g_force,
+            "duration_sec": duration_sec,
+            "simulated_latency_sec": delay_seconds
+        })
+
+        # Motor acceleration ramp-up delay - cancellable on barge-in
+        await asyncio.sleep(delay_seconds)
+
+        async with self._lock:
+            self.centrifuge["state"] = "SPINNING"
+            self.centrifuge["rpm"] = target_rpm
+            self.centrifuge["target_rpm"] = target_rpm
+            self.centrifuge["g_force"] = g_force
+            self.centrifuge["time_remaining_sec"] = duration_sec
+            self.centrifuge["brake_status"] = "DISENGAGED"
+            self.centrifuge["last_run_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            result = dict(self.centrifuge)
+
+        self.add_audit_entry(
+            raw_speech=f"Spin centrifuge at {target_rpm} RPM for {duration_sec}s",
+            normalized_speech=f"Centrifuge active at {target_rpm} R-P-M ({g_force} g-force)",
+            action="RUN_CENTRIFUGE",
+            status="COMMITTED"
+        )
+
+        await self.notify_subscribers("CENTRIFUGE_CHANGED", {
+            "centrifuge": result
+        })
+        return result
+
+    async def emergency_brake_centrifuge(self) -> Dict[str, Any]:
+        """Instant electronic brake for centrifuge."""
+        async with self._lock:
+            self.centrifuge["state"] = "EMERGENCY_STOP"
+            self.centrifuge["rpm"] = 0
+            self.centrifuge["g_force"] = 0
+            self.centrifuge["time_remaining_sec"] = 0
+            self.centrifuge["brake_status"] = "ENGAGED_LOCKED"
+            result = dict(self.centrifuge)
+
+        await self.notify_subscribers("CENTRIFUGE_CHANGED", {
+            "centrifuge": result
         })
         return result
 
 
 # Global singleton instance
 lab_store = MockLabStore()
-

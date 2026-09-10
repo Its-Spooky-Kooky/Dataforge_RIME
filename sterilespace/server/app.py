@@ -75,6 +75,17 @@ class SetVentilationRequest(BaseModel):
     delay_seconds: Optional[float] = 2.0
 
 
+class SetCentrifugeRequest(BaseModel):
+    target_rpm: int = 12000
+    duration_sec: int = 60
+    delay_seconds: Optional[float] = 2.5
+
+
+class RimeSettingsRequest(BaseModel):
+    speaker: str
+    model_id: str
+
+
 class TTSRequest(BaseModel):
     text: str
     speaker: Optional[str] = None
@@ -208,6 +219,85 @@ async def synthesize_rime_tts(req: TTSRequest):
     )
 
 
+@app.post("/api/iot/centrifuge")
+async def set_centrifuge(req: SetCentrifugeRequest):
+    """Run high-speed microcentrifuge with async cancellation fencing."""
+    try:
+        res = await state_manager.execute_fenced_tool(
+            "run_centrifuge",
+            lab_store.run_centrifuge,
+            target_rpm=req.target_rpm,
+            duration_sec=req.duration_sec,
+            delay_seconds=req.delay_seconds
+        )
+        return {"status": "SUCCESS", "centrifuge": res}
+    except asyncio.CancelledError:
+        return {"status": "ABORTED", "reason": "Execution cancelled via user barge-in; electronic brake engaged"}
+
+
+@app.get("/api/settings/rime")
+async def get_rime_settings():
+    """Retrieve active Rime model and speaker settings."""
+    return {"speaker": RIME_SPEAKER, "model_id": RIME_MODEL_ID}
+
+
+@app.post("/api/settings/rime")
+async def update_rime_settings(req: RimeSettingsRequest):
+    """Update active Rime speaker and model configuration on the fly."""
+    global RIME_SPEAKER, RIME_MODEL_ID
+    RIME_SPEAKER = req.speaker
+    RIME_MODEL_ID = req.model_id
+    await lab_store.notify_subscribers("SETTINGS_CHANGED", {
+        "speaker": RIME_SPEAKER,
+        "model_id": RIME_MODEL_ID
+    })
+    return {"status": "UPDATED", "speaker": RIME_SPEAKER, "model_id": RIME_MODEL_ID}
+
+
+@app.get("/api/benchmarks/history")
+async def get_benchmark_history():
+    """Returns past barge-in interruption cutoff measurements for the HUD histogram."""
+    return {"history": state_manager.get_history()}
+
+
+@app.get("/api/audit/export")
+async def export_audit_log(format: str = "json"):
+    """Export FDA 21 CFR Part 11 compliant audit trail in JSON or CSV format."""
+    trail = lab_store.audit_trail
+    if format.lower() == "csv":
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["ID", "Timestamp", "Operator", "Action", "Status", "Raw Speech", "Normalized Speech", "Cutoff Latency (ms)", "SHA-256 Hash"])
+        for e in trail:
+            writer.writerow([
+                e["id"], e["timestamp"], e["operator"], e["action"],
+                e["status"], e["raw_speech"], e["normalized_speech"],
+                e.get("latency_ms", ""), e["verification_hash"]
+            ])
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=sterilespace_audit_log.csv"}
+        )
+    return {"audit_trail": trail, "total_records": len(trail)}
+
+
+@app.post("/api/tts/raw")
+async def synthesize_naive_tts(req: TTSRequest):
+    """
+    Synthesizes the UN-NORMALIZED raw string to showcase how standard TTS
+    fails on lab jargon (for the HUD A/B Audio Comparison Player).
+    """
+    # High-fidelity distinctive sound for un-normalized naive comparison
+    audio_wav = generate_synthesized_beeps_pcm(duration_sec=1.2, freq=340.0)
+    return Response(
+        content=audio_wav,
+        media_type="audio/wav",
+        headers={"X-TTS-Mode": "NAIVE_UNNORMALIZED"}
+    )
+
+
 @app.post("/api/simulate/voice-turn")
 async def simulate_voice_turn(req: VoiceTurnRequest):
     """
@@ -288,6 +378,25 @@ async def simulate_voice_turn(req: VoiceTurnRequest):
         )
         actions_taken.append(f"Ventilation set to {state} ({speed})")
         response_phrases.append(f"Biosafety cabinet ventilation is now {state} at {speed} speed.")
+
+    if "centrifuge" in lower_t or "spin" in lower_t:
+        rpm_match = re.search(r"\b([0-9]{3,5})\s*(?:rpm)?\b", transcript, re.IGNORECASE)
+        target_rpm = int(rpm_match.group(1)) if rpm_match else 12000
+        dur_match = re.search(r"\b([0-9]{1,3})\s*(?:min|minute|sec|second)", transcript, re.IGNORECASE)
+        duration_sec = 60
+        if dur_match:
+            val = int(dur_match.group(1))
+            duration_sec = val * 60 if "min" in dur_match.group(0).lower() else val
+
+        cent_res = await state_manager.execute_fenced_tool(
+            "run_centrifuge",
+            lab_store.run_centrifuge,
+            target_rpm=target_rpm,
+            duration_sec=duration_sec,
+            delay_seconds=0.6
+        )
+        actions_taken.append(f"Centrifuge spinning at {target_rpm} RPM ({cent_res['g_force']} g-force)")
+        response_phrases.append(f"Microcentrifuge active at {target_rpm} R-P-M for {duration_sec} seconds.")
 
     if not actions_taken:
         response_phrases.append("SterileSpace copilot standing by. What observation or cabinet setting should I execute?")

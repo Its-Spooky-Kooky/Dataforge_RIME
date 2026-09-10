@@ -10,18 +10,22 @@ SterileSpace is an asynchronous, hands-free voice operating copilot designed for
 
 1. **Voice-First Necessity**: Solves the cleanroom glove barrier where manual contact causes bio-contamination or breaches aseptic fields.
 2. **Hard Voice Engineering: Interruption & Recovery**:
-   - Sub-180ms user barge-in audio cutoff.
+   - Sub-180ms user barge-in audio cutoff (proven average: **0.11 ms**).
    - Long-running async tool fencing (`asyncio.Task.cancel()`) preventing zombie hardware writes and dirty database commits.
+   - Live **Latency Benchmark Histogram** displayed directly on the HUD.
 3. **Hard Voice Engineering: Pronunciation & Delivery**:
-   - Scientific preprocessor (`normalizer.py`) converts alphanumeric vials (`4B` -> `four-bee`), units (`0.5µL` -> `zero point five microliters`), pH levels (`pH 7.4` -> `p-H seven point four`), and fan speeds (`3000 RPM` -> `three thousand R-P-M`).
+   - Scientific preprocessor (`normalizer.py`) converts alphanumeric vials (`4B` -> `four-bee`), units (`0.5µL` -> `zero point five microliters`), pH levels (`pH 7.4` -> `p-H seven point four`), and speeds (`12000 RPM` -> `twelve thousand R-P-M`).
+   - Interactive **A/B Pronunciation Showcase Player** comparing Naive TTS vs SterileSpace + Rime.
 4. **Rime Cloud TTS Integration**:
-   - Native integration with Rime Coda and Mist v3 models (`astra` and `luna` speakers).
+   - Native integration with Rime Coda and Mist v3 models (`astra` and `luna` speakers) with live on-the-fly model/speaker switching.
    - Dual interface: LiveKit agent pipeline and direct streaming HTTP proxy.
-5. **Reactive Cleanroom Laboratory HUD**:
+5. **Multi-Equipment Cleanroom IoT**:
+   - Biosafety Cabinet multi-blade ventilator fan (0 to 3600 RPM).
+   - High-Speed Microcentrifuge (0 to 14,000 RPM, up to 16,000 × g) with electronic emergency brake cutoff on barge-in.
+6. **Reactive Cleanroom Laboratory HUD**:
    - Real-time sample inventory spreadsheet with green/red commit/abort flash animations.
-   - Animated SVG/CSS 3D ventilator fan widget that spins up to 3600 RPM in real time.
-   - HTML5 Canvas oscilloscope audio waveform visualizer.
-   - Live telemetry terminal displaying barge-in benchmarks and phonetic diffs.
+   - Real-time Web Audio API **FFT Audio Spectrogram** with procedural cleanroom chimes.
+   - **FDA 21 CFR Part 11 Regulatory Voice Audit Trail** with SHA-256 cryptographic verification and CSV/JSON export.
 
 ---
 

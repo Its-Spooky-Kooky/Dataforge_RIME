@@ -659,10 +659,291 @@ body.cleanroom-theme {
 }
 
 /* ==============================================================================
+   Advanced Header Elements: Selectors & Audit Export
+   ============================================================================== */
+.header-select {
+  background: #0d131f;
+  border: 1px solid var(--border-color);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+}
+
+.header-select:focus {
+  border-color: var(--accent-cyan);
+}
+
+.audit-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  color: var(--accent-cyan);
+  padding: 0.4rem 0.8rem;
+  border-radius: 50px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.audit-btn:hover {
+  background: rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+
+/* ==============================================================================
+   Equipment Grid & Centrifuge Rotor Visualizer
+   ============================================================================== */
+.equipment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+:root {
+  --rotor-speed: 0s;
+}
+
+.rotor-visualizer-container {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  flex-shrink: 0;
+}
+
+.rotor-housing {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1a2333 40%, #0a0e17 100%);
+  border: 3px solid #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.9), 0 0 12px rgba(255, 171, 0, 0.15);
+  position: relative;
+}
+
+.rotor-disc {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #1f293d;
+  border: 2px solid #4b5563;
+  position: relative;
+  animation: spinRotor var(--rotor-speed, 0s) linear infinite;
+}
+
+@keyframes spinRotor {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.rotor-well {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #111827;
+  border: 1px solid var(--accent-amber);
+  top: 50%;
+  left: 50%;
+}
+
+.well-1 { transform: translate(-50%, -50%) rotate(0deg) translateY(-28px); }
+.well-2 { transform: translate(-50%, -50%) rotate(60deg) translateY(-28px); }
+.well-3 { transform: translate(-50%, -50%) rotate(120deg) translateY(-28px); }
+.well-4 { transform: translate(-50%, -50%) rotate(180deg) translateY(-28px); }
+.well-5 { transform: translate(-50%, -50%) rotate(240deg) translateY(-28px); }
+.well-6 { transform: translate(-50%, -50%) rotate(300deg) translateY(-28px); }
+
+.rotor-center-bolt {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffab00, #b27b00);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px rgba(255, 171, 0, 0.5);
+}
+
+.fill-amber {
+  background: linear-gradient(90deg, var(--accent-amber), #ff6d00) !important;
+}
+
+.btn-warning:hover {
+  border-color: var(--accent-amber);
+  box-shadow: 0 4px 12px rgba(255, 171, 0, 0.25);
+}
+
+.btn-warning .btn-text strong {
+  color: #ffb74d;
+}
+
+/* ==============================================================================
+   A/B Pronunciation Showcase Player
+   ============================================================================== */
+.ab-card {
+  border-color: rgba(0, 229, 255, 0.25);
+}
+
+.ab-phrase-box {
+  background: #080c14;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.8rem;
+}
+
+.ab-label {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  margin-bottom: 0.2rem;
+}
+
+.ab-phrase-box code {
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+}
+
+.ab-btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.ab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ab-naive:hover {
+  border-color: var(--accent-red);
+  box-shadow: 0 0 12px rgba(255, 23, 68, 0.2);
+}
+
+.ab-naive strong {
+  color: #ff5252;
+}
+
+.ab-normalized:hover {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 12px rgba(0, 230, 118, 0.25);
+}
+
+.ab-normalized strong {
+  color: var(--accent-green);
+}
+
+.ab-btn-info strong {
+  display: block;
+  font-size: 0.78rem;
+}
+
+.ab-btn-info small {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+/* ==============================================================================
+   Interruption Benchmark Latency Histogram
+   ============================================================================== */
+.histogram-container {
+  height: 90px;
+  background: #080c14;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 1rem 0.5rem 1rem;
+  overflow: hidden;
+}
+
+.histogram-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  width: 100%;
+  height: 100%;
+}
+
+.hist-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.hist-bar {
+  width: 100%;
+  background: linear-gradient(to top, var(--accent-green), var(--accent-cyan));
+  border-radius: 3px 3px 0 0;
+  min-height: 4px;
+  transition: height 0.4s ease;
+  box-shadow: 0 0 6px rgba(0, 230, 118, 0.3);
+}
+
+.hist-val {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.histogram-ceiling-line {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  width: 100%;
+  border-top: 1px dashed rgba(255, 23, 68, 0.6);
+  pointer-events: none;
+}
+
+.histogram-ceiling-line span {
+  position: absolute;
+  right: 10px;
+  top: -9px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #ff5252;
+  background: #080c14;
+  padding: 0 0.3rem;
+}
+
+/* ==============================================================================
    Responsive Queries
    ============================================================================== */
 @media (max-width: 1024px) {
   .lab-grid {
+    grid-template-columns: 1fr;
+  }
+  .equipment-grid {
     grid-template-columns: 1fr;
   }
 }

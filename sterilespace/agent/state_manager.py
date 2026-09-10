@@ -36,6 +36,11 @@ class AgentStateManager:
         self._lock = asyncio.Lock()
         self.audio_stop_callbacks: List[Callable[[], Any]] = []
         self.last_interruption_event: Optional[Dict[str, Any]] = None
+        self.interruption_history: List[Dict[str, Any]] = []
+
+    def get_history(self) -> List[Dict[str, Any]]:
+        """Returns recent interruption benchmark history."""
+        return list(self.interruption_history[-20:])
 
     def register_audio_stop_callback(self, cb: Callable[[], Any]) -> None:
         """Register callback to immediately drop/drain playing or synthesizing TTS audio."""
@@ -129,6 +134,20 @@ class AgentStateManager:
             "target_met": total_cutoff_latency_ms < 180.0
         }
         self.last_interruption_event = event_payload
+        self.interruption_history.append(event_payload)
+
+        # Trigger emergency centrifuge electronic brake if centrifuge was in-flight
+        if any(act.get("action") == "run_centrifuge" for act in cancelled_actions):
+            asyncio.create_task(lab_store.emergency_brake_centrifuge())
+
+        # Log audit entry for barge-in abort
+        lab_store.add_audit_entry(
+            raw_speech=f"USER_BARGE_IN ({reason})",
+            normalized_speech=f"Interruption cutoff executed in {round(total_cutoff_latency_ms, 2)} ms",
+            action="BARGE_IN_ABORT",
+            status="ABORTED",
+            latency_ms=round(total_cutoff_latency_ms, 2)
+        )
 
         # Broadcast interruption telemetry
         await lab_store.notify_subscribers("BARGE_IN_TRIGGERED", event_payload)
