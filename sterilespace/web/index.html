@@ -17,54 +17,51 @@
         <span class="pulse-ring"></span>
         <span class="logo-icon">☣</span>
       </div>
-      <div>
-        <h1 class="brand-title">SterileSpace</h1>
-        <span class="sub-brand">Hands-Free Cleanroom Operating Copilot</span>
-      </div>
-    </div>
-
-    <!-- Interface Mode Switcher -->
-    <div class="interface-switcher">
-      <a href="/operator" class="switch-tab">
-        <span class="tab-icon">🎙️</span>
-        <span>Operator Mic</span>
-      </a>
-      <a href="/hud" class="switch-tab active">
-        <span class="tab-icon">🖥️</span>
-        <span>Operations HUD</span>
-      </a>
-    </div>
-
-    <div class="header-center">
-      <!-- Active Speech Provider Dropdown -->
-      <div class="status-pill rime-badge">
-        <span class="indicator-dot live-glow"></span>
-        <span class="provider-label">TTS Provider:</span>
-        <select id="select-model" class="header-select">
-          <option value="coda" selected>Rime Coda (Ultra-Low Latency)</option>
-          <option value="mist">Rime Mist v3 (Expressive)</option>
-        </select>
-        <select id="select-speaker" class="header-select">
-          <option value="astra" selected>Speaker: astra</option>
-          <option value="luna">Speaker: luna</option>
-        </select>
+      <div class="brand-text-group">
+        <div class="brand-row">
+          <h1 class="brand-title">SterileSpace</h1>
+          <span class="bsl-badge">BSL-2 STERILE</span>
+        </div>
+        <span class="sub-brand">Hands-Free Cleanroom Voice Copilot</span>
       </div>
 
-      <div class="status-pill latency-badge">
-        <span class="metric-title">Barge-in Target:</span>
-        <strong id="bargein-metric" class="highlight-green">&lt; 180 ms</strong>
+      <!-- Interface Mode Switcher -->
+      <div class="interface-switcher">
+        <a href="/operator" class="switch-tab">
+          <span class="tab-icon">🎙️</span>
+          <span>Operator Mic</span>
+        </a>
+        <a href="/hud" class="switch-tab active">
+          <span class="tab-icon">🖥️</span>
+          <span>Operations HUD</span>
+        </a>
       </div>
     </div>
 
     <div class="header-right">
+      <div class="status-pill rime-badge">
+        <span class="indicator-dot live-glow"></span>
+        <span class="provider-label">TTS Engine:</span>
+        <select id="select-model" class="header-select" title="Switch Rime TTS Model">
+          <option value="coda" selected>Rime Coda (Fast)</option>
+          <option value="mist">Rime Mist v3 (HD)</option>
+        </select>
+        <select id="select-speaker" class="header-select" title="Switch Voice Speaker">
+          <option value="astra" selected>astra</option>
+          <option value="luna">luna</option>
+        </select>
+      </div>
+
+      <div class="status-pill latency-badge" title="Official Barge-in Interruption Ceiling Requirement">
+        <span class="metric-title">Barge-in:</span>
+        <strong id="bargein-metric" class="highlight-green">&lt; 180 ms</strong>
+      </div>
+
       <button class="audit-btn" id="btn-export-audit" title="Download FDA 21 CFR Part 11 compliant audit report">
         <span class="audit-icon">📋</span>
-        <span>Export Audit Log</span>
+        <span>Audit CSV</span>
       </button>
-      <div class="status-pill barrier-badge">
-        <span class="shield-icon">🛡️</span>
-        <span>GLOVE BARRIER: <strong class="glow-cyan">ACTIVE (BSL-2)</strong></span>
-      </div>
+
       <div id="ws-status" class="status-pill ws-badge connected">
         <span class="status-indicator"></span>
         <span>Telemetry Live</span>
@@ -74,18 +71,18 @@
 
   <!-- Main Dashboard Grid -->
   <main class="lab-grid">
-    <!-- Left Column: Inventory, Fan & Centrifuge -->
+    <!-- Left Column: Inventory, Fan & Centrifuge, Active Timers -->
     <section class="panel-column left-col">
       <!-- Real-Time Data Grid -->
       <div class="lab-card data-grid-card">
         <div class="card-header">
           <div class="card-title-group">
             <span class="section-icon">🧪</span>
-            <h2>Sample & Tube Inventory Grid</h2>
+            <h2>Sample &amp; Reagent Inventory Grid</h2>
           </div>
-          <span class="live-tag">REAL-TIME TELEMETRY</span>
+          <span class="live-tag">LIVE TELEMETRY</span>
         </div>
-        <p class="card-desc">Table automatically lights up green upon valid commit, or flashes red upon barge-in rollback.</p>
+        <p class="card-desc">Updated via speech. Commits flash green; barge-in aborts trigger instant rollback.</p>
 
         <div class="table-container">
           <table class="lab-table" id="sample-table">
@@ -100,7 +97,46 @@
               </tr>
             </thead>
             <tbody id="sample-rows">
-              <!-- Dynamically rendered -->
+              <tr id="row-4B">
+                <td><span class="tube-badge">4B</span></td>
+                <td><strong>oxidation</strong></td>
+                <td>5.0</td>
+                <td>%</td>
+                <td><span class="status-badge status-normal">NORMAL</span></td>
+                <td>12:00:00</td>
+              </tr>
+              <tr id="row-12C">
+                <td><span class="tube-badge">12C</span></td>
+                <td><strong>pH</strong></td>
+                <td>7.2</td>
+                <td>pH</td>
+                <td><span class="status-badge status-optimal">OPTIMAL</span></td>
+                <td>12:00:00</td>
+              </tr>
+              <tr id="row-A3">
+                <td><span class="tube-badge">A3</span></td>
+                <td><strong>temperature</strong></td>
+                <td>37.0</td>
+                <td>°C</td>
+                <td><span class="status-badge status-incubating">INCUBATING</span></td>
+                <td>12:00:00</td>
+              </tr>
+              <tr id="row-P2">
+                <td><span class="tube-badge">P2</span></td>
+                <td><strong>concentration</strong></td>
+                <td>1.2</td>
+                <td>mg/mL</td>
+                <td><span class="status-badge status-normal">NORMAL</span></td>
+                <td>12:00:00</td>
+              </tr>
+              <tr id="row-T7">
+                <td><span class="tube-badge">T7</span></td>
+                <td><strong>OD600</strong></td>
+                <td>0.8</td>
+                <td>abs</td>
+                <td><span class="status-badge status-normal">NORMAL</span></td>
+                <td>12:00:00</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -185,6 +221,34 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Active Incubation Timers & Voice Streamer Panel -->
+      <div class="lab-card timers-hud-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="section-icon">⏱️</span>
+            <h2>Active Cleanroom Voice Timers &amp; SOP Stream</h2>
+          </div>
+          <span class="live-tag">VOICE CONTROLLED</span>
+        </div>
+        <p class="card-desc">Countdown timers and cleanroom protocols triggered touchlessly via speech.</p>
+
+        <div class="timers-hud-grid" id="timers-hud-grid">
+          <div class="timer-placeholder" id="timer-placeholder">
+            <span>No active countdown timers. Speak: <em>"Set timer for 45 seconds"</em> on the Operator Mic.</span>
+          </div>
+        </div>
+
+        <div class="hud-mic-launch-bar">
+          <div class="launch-info">
+            <strong>Hands-Free Operator Voice Station</strong>
+            <small>Speak commands on cleanroom headset or mobile terminal</small>
+          </div>
+          <a href="/operator" class="operator-launch-btn">
+            <span>🎙️ Open Operator Mic &rarr;</span>
+          </a>
         </div>
       </div>
     </section>
@@ -277,34 +341,6 @@
             <span class="log-tag tag-sys">SYSTEM</span>
             <span class="log-msg">SterileSpace cleanroom copilot initialized. Hands-free voice fencing active.</span>
           </div>
-        </div>
-      </div>
-
-      <!-- Active Incubation Timers & Voice Streamer Panel -->
-      <div class="lab-card timers-hud-card">
-        <div class="card-header">
-          <div class="card-title-group">
-            <span class="section-icon">⏱️</span>
-            <h2>Active Cleanroom Voice Timers &amp; Stream</h2>
-          </div>
-          <span class="live-tag">100% VOICE DRIVEN</span>
-        </div>
-        <p class="card-desc">Timers and cleanroom commands are initiated exclusively via technician speech input.</p>
-
-        <div class="timers-hud-grid" id="timers-hud-grid">
-          <div class="timer-placeholder" id="timer-placeholder">
-            <span>No active countdown timers. Speak: <em>"Set timer for 45 seconds"</em> on the Operator Mic.</span>
-          </div>
-        </div>
-
-        <div class="hud-mic-launch-bar">
-          <div class="launch-info">
-            <strong>Cleanroom Operator Voice Channel</strong>
-            <small>Speak commands via microphone on mobile/headset terminal</small>
-          </div>
-          <a href="/operator" class="operator-launch-btn">
-            <span>🎙️ Open Operator Mic</span>
-          </a>
         </div>
       </div>
     </section>

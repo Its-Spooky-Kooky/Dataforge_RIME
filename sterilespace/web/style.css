@@ -51,36 +51,39 @@ body.cleanroom-theme {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 2rem;
-  background: rgba(17, 24, 39, 0.85);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-color);
+  padding: 0.85rem 2rem;
+  background: rgba(10, 15, 26, 0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.18);
   position: sticky;
   top: 0;
   z-index: 100;
+  gap: 1.5rem;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
+  flex-shrink: 0;
 }
 
 .logo-mark {
   position: relative;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   background: rgba(0, 229, 255, 0.1);
   border: 1px solid var(--accent-cyan);
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.25);
+  flex-shrink: 0;
 }
 
 .logo-icon {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   color: var(--accent-cyan);
 }
 
@@ -88,55 +91,87 @@ body.cleanroom-theme {
   position: absolute;
   width: 100%;
   height: 100%;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--accent-cyan);
   animation: pulseRing 3s infinite ease-out;
 }
 
 @keyframes pulseRing {
   0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(1.4); opacity: 0; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+.brand-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
 }
 
 .brand-title {
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: -0.5px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.4px;
   color: #ffffff;
 }
 
-.sub-brand {
-  font-size: 0.75rem;
-  color: var(--accent-cyan);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+.bsl-badge {
   font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+  background: rgba(255, 171, 0, 0.12);
+  border: 1px solid rgba(255, 171, 0, 0.35);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
 }
 
-.header-center {
+.sub-brand {
+  font-size: 0.72rem;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.header-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
 }
 
 .status-pill {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0.9rem;
+  padding: 0.35rem 0.8rem;
   border-radius: 50px;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-color);
+  white-space: nowrap;
 }
 
 .rime-badge {
-  border-color: rgba(0, 229, 255, 0.3);
-  background: rgba(0, 229, 255, 0.05);
+  border-color: rgba(0, 229, 255, 0.35);
+  background: rgba(0, 229, 255, 0.06);
 }
 
 .rime-badge strong {
   color: var(--accent-cyan);
+}
+
+.latency-badge {
+  border-color: rgba(0, 230, 118, 0.25);
+  background: rgba(0, 230, 118, 0.05);
 }
 
 .latency-badge strong {
@@ -315,6 +350,18 @@ body.cleanroom-theme {
   background: rgba(0, 230, 118, 0.1);
   color: var(--accent-green);
   border: 1px solid rgba(0, 230, 118, 0.3);
+}
+
+.status-badge.status-optimal {
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+}
+
+.status-badge.status-incubating {
+  background: rgba(179, 136, 255, 0.12);
+  color: var(--accent-purple);
+  border: 1px solid rgba(179, 136, 255, 0.35);
 }
 
 .status-badge.status-elevated {
@@ -662,39 +709,54 @@ body.cleanroom-theme {
    Advanced Header Elements: Selectors & Audit Export
    ============================================================================== */
 .header-select {
-  background: #0d131f;
-  border: 1px solid var(--border-color);
+  background: rgba(13, 20, 32, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.25);
   color: var(--accent-cyan);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  font-size: 0.74rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
   cursor: pointer;
   outline: none;
+  transition: all 0.2s ease;
+}
+
+.header-select:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(13, 20, 32, 1);
 }
 
 .header-select:focus {
   border-color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+.header-select option {
+  background: #080c14;
+  color: #ffffff;
 }
 
 .audit-btn {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  background: rgba(0, 229, 255, 0.1);
+  gap: 0.45rem;
+  background: rgba(0, 229, 255, 0.08);
   border: 1px solid rgba(0, 229, 255, 0.3);
   color: var(--accent-cyan);
-  padding: 0.4rem 0.8rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 50px;
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.76rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .audit-btn:hover {
-  background: rgba(0, 229, 255, 0.2);
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+  background: rgba(0, 229, 255, 0.18);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+  transform: translateY(-1px);
 }
 
 /* ==============================================================================
