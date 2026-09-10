@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SterileSpace - Cleanroom Voice Operating Copilot</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="cleanroom-theme">
+  <!-- Top Navigation / Status Header -->
+  <header class="lab-header">
+    <div class="header-left">
+      <div class="logo-mark">
+        <span class="pulse-ring"></span>
+        <span class="logo-icon">☣</span>
+      </div>
+      <div>
+        <h1 class="brand-title">SterileSpace</h1>
+        <span class="sub-brand">Hands-Free Cleanroom Operating Copilot</span>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <!-- Active Speech Provider Badge -->
+      <div class="status-pill rime-badge">
+        <span class="indicator-dot live-glow"></span>
+        <span class="provider-label">Active Speech Provider:</span>
+        <strong id="provider-info">Rime TTS (Coda / astra)</strong>
+      </div>
+
+      <div class="status-pill latency-badge">
+        <span class="metric-title">Barge-in Cutoff Target:</span>
+        <strong id="bargein-metric" class="highlight-green">&lt; 180 ms</strong>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="status-pill barrier-badge">
+        <span class="shield-icon">🛡️</span>
+        <span>GLOVE BARRIER: <strong class="glow-cyan">ACTIVE (BSL-2)</strong></span>
+      </div>
+      <div id="ws-status" class="status-pill ws-badge connected">
+        <span class="status-indicator"></span>
+        <span>Telemetry Live</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Grid -->
+  <main class="lab-grid">
+    <!-- Left Column: Inventory & Mock Hardware -->
+    <section class="panel-column left-col">
+      <!-- Real-Time Data Grid -->
+      <div class="lab-card data-grid-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="section-icon">🧪</span>
+            <h2>Sample & Tube Inventory Grid</h2>
+          </div>
+          <span class="live-tag">REAL-TIME TELEMETRY</span>
+        </div>
+        <p class="card-desc">Table automatically lights up green upon valid commit, or flashes red upon barge-in rollback.</p>
+
+        <div class="table-container">
+          <table class="lab-table" id="sample-table">
+            <thead>
+              <tr>
+                <th>Tube ID</th>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Unit</th>
+                <th>Status</th>
+                <th>Last Updated</th>
+              </tr>
+            </thead>
+            <tbody id="sample-rows">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Biosafety Cabinet & IoT Fan Relay -->
+      <div class="lab-card iot-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="section-icon">🌀</span>
+            <h2>Biosafety Cabinet Exhaust Fan Relay (IoT)</h2>
+          </div>
+          <span id="fan-state-badge" class="badge-state state-off">OFF</span>
+        </div>
+
+        <div class="iot-layout">
+          <!-- Animated 3D/CSS Fan Blade Widget -->
+          <div class="fan-visualizer-container">
+            <div class="fan-housing">
+              <div class="fan-blades" id="fan-blades">
+                <div class="blade blade-1"></div>
+                <div class="blade blade-2"></div>
+                <div class="blade blade-3"></div>
+                <div class="blade blade-4"></div>
+                <div class="blade-hub"></div>
+              </div>
+            </div>
+            <div class="fan-glow-ring" id="fan-glow"></div>
+          </div>
+
+          <!-- Tachometer & Telemetry Meters -->
+          <div class="fan-metrics">
+            <div class="metric-tile">
+              <span class="tile-label">Fan Speed</span>
+              <span class="tile-value" id="val-rpm">0 <small>RPM</small></span>
+              <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-rpm" style="width: 0%"></div></div>
+            </div>
+
+            <div class="metric-tile">
+              <span class="tile-label">Airflow Throughput</span>
+              <span class="tile-value" id="val-cfm">0 <small>CFM</small></span>
+              <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-cfm" style="width: 0%"></div></div>
+            </div>
+
+            <div class="metric-tile">
+              <span class="tile-label">Cabinet Differential Pressure</span>
+              <span class="tile-value" id="val-pressure">-5.0 <small>Pa</small></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Visualizer, Terminal & Test Suite -->
+    <section class="panel-column right-col">
+      <!-- Audio Waveform Visualizer -->
+      <div class="lab-card visualizer-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="section-icon">🎙️</span>
+            <h2>Voice Activity & Rime Audio Waveform</h2>
+          </div>
+          <span class="audio-state-pill" id="audio-state">IDLE</span>
+        </div>
+        <canvas id="waveform-canvas" width="600" height="110"></canvas>
+        <div class="visualizer-footer">
+          <span class="audio-stat">VAD State: <strong id="vad-status">LISTENING</strong></span>
+          <span class="audio-stat">Rime Audio Buffer: <strong id="buffer-status">READY</strong></span>
+          <span class="audio-stat">Sample Rate: <strong>24.0 kHz</strong></span>
+        </div>
+      </div>
+
+      <!-- Action & Interruption Telemetry Terminal -->
+      <div class="lab-card terminal-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="section-icon">⚡</span>
+            <h2>Live Telemetry & Normalizer Event Log</h2>
+          </div>
+          <button class="clear-btn" id="btn-clear-log">Clear</button>
+        </div>
+        <div class="terminal-body" id="terminal-log">
+          <div class="log-entry system">
+            <span class="log-time">00:00:00</span>
+            <span class="log-tag tag-sys">SYSTEM</span>
+            <span class="log-msg">SterileSpace cleanroom copilot initialized. Hands-free voice fencing active.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hands-Free Demo Controls Panel -->
+      <div class="lab-card controls-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="section-icon">🎛️</span>
+            <h2>Hands-Free Voice Simulation Triggers</h2>
+          </div>
+          <span class="sub-label">One-click reproducible demonstrations</span>
+        </div>
+        <div class="btn-cluster">
+          <button class="action-btn btn-primary" id="btn-compound">
+            <span class="btn-icon">⚡</span>
+            <div class="btn-text">
+              <strong>Compound Spoken Command</strong>
+              <small>"Log 15% oxidation on tube 4B and turn on ventilation high"</small>
+            </div>
+          </button>
+
+          <button class="action-btn btn-danger" id="btn-bargein">
+            <span class="btn-icon">🛑</span>
+            <div class="btn-text">
+              <strong>Simulate Barge-In Interrupt</strong>
+              <small>Fences 2.5s tool & cuts Rime audio (&lt;180ms benchmark)</small>
+            </div>
+          </button>
+
+          <button class="action-btn btn-secondary" id="btn-phonetic">
+            <span class="btn-icon">🗣️</span>
+            <div class="btn-text">
+              <strong>Test Lab Phonetics Engine</strong>
+              <small>"Tube 12C with 0.5µL at pH 7.4 at 3000 RPM"</small>
+            </div>
+          </button>
+
+          <button class="action-btn btn-accent" id="btn-toggle-mic">
+            <span class="btn-icon">🎤</span>
+            <div class="btn-text">
+              <strong id="mic-btn-label">Activate Microphone</strong>
+              <small>Hands-free voice recognition input</small>
+            </div>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="lab-footer">
+    <span>SterileSpace • Rime Voice AI Hackathon 2026</span>
+    <span>Voice-First Necessary UI • Coda/Mist Streaming Engine • Sub-180ms Cutoff Proven</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

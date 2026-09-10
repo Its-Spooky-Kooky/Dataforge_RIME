@@ -1,0 +1,23 @@
+{
+  "name": "sterilespace",
+  "version": "1.0.0",
+  "description": "SterileSpace - Dirty-Hands / Sterile-Lab Voice Operating Copilot for Rime Voice AI Hackathon",
+  "main": "server/app.py",
+  "scripts": {
+    "start": "python -m uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload",
+    "agent": "python agent/main.py dev",
+    "test": "python evals/test_interruption.py",
+    "benchmark": "python evals/test_interruption.py --verbose"
+  },
+  "keywords": [
+    "rime",
+    "voice-ai",
+    "livekit",
+    "tts",
+    "sterile-lab",
+    "barge-in",
+    "fastapi"
+  ],
+  "author": "SterileSpace Team",
+  "license": "MIT"
+}

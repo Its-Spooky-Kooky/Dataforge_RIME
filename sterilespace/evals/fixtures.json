@@ -1,0 +1,58 @@
+{
+  "phonetic_normalization_fixtures": [
+    {
+      "input": "Observation on tube 4B shows 15% oxidation.",
+      "expected_contains": ["four-bee", "fifteen percent"]
+    },
+    {
+      "input": "Titrate 0.5µL at pH 7.4 into sample 12C.",
+      "expected_contains": ["zero point five microliters", "p-H seven point four", "twelve-cee"]
+    },
+    {
+      "input": "Centrifuge tube A3 at 3000 RPM at 37°C.",
+      "expected_contains": ["ay-three", "three thousand R-P-M", "thirty-seven degrees Celsius"]
+    },
+    {
+      "input": "Incubator rack P2 contains H2O2 and CO2.",
+      "expected_contains": ["pee-two", "H-two-O-two", "C-O-two"]
+    },
+    {
+      "input": "Dispense 250µL of NaCl into vial 102A.",
+      "expected_contains": ["two hundred fifty microliters", "sodium chloride", "one hundred two-ay"]
+    },
+    {
+      "input": "Sample T7 shows OD600 of 0.8 with 5mL PBS.",
+      "expected_contains": ["tee-seven", "O-D six hundred", "zero point eight", "five milliliters", "P-B-S"]
+    }
+  ],
+  "compound_commands": [
+    {
+      "transcript": "Log oxidation 15% on tube 4B and turn on ventilation high",
+      "expected_actions": [
+        "log_sample_observation",
+        "set_ventilation"
+      ]
+    },
+    {
+      "transcript": "Set tube 12C to pH 7.4 and purge ventilation",
+      "expected_actions": [
+        "log_sample_observation",
+        "set_ventilation"
+      ]
+    }
+  ],
+  "interruption_benchmarks": [
+    {
+      "name": "Mid-tool barge-in during 2.5s network observation write",
+      "tool_duration_sec": 2.5,
+      "interrupt_at_sec": 0.4,
+      "max_acceptable_latency_ms": 180.0
+    },
+    {
+      "name": "Mid-relay barge-in during 2.0s ventilation switch",
+      "tool_duration_sec": 2.0,
+      "interrupt_at_sec": 0.3,
+      "max_acceptable_latency_ms": 180.0
+    }
+  ]
+}
