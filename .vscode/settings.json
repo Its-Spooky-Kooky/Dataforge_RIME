@@ -2,9 +2,14 @@
   "files.watcherExclude": {
     "**/.git/objects/**": true,
     "**/.git/subtree-cache/**": true,
+    "**/.git/index": true,
+    "**/.git/index.lock": true,
+    "**/.git/logs/**": true,
     "**/node_modules/**": true,
     "**/__pycache__/**": true
   },
+  "git.autorefresh": true,
+  "git.path": "C:\\Program Files\\Git\\cmd\\git.exe",
   "python.analysis.extraPaths": [
     "./sterilespace"
   ],

@@ -232,6 +232,8 @@ function drawVoiceWave() {
 drawVoiceWave();
 
 // ==============================================================================
+let isAssistantSpeaking = false;
+
 // Audio Playback with Rime TTS
 // ==============================================================================
 async function playAudioResponse(arrayBuffer) {
@@ -243,12 +245,14 @@ async function playAudioResponse(arrayBuffer) {
     source.connect(ctx.destination);
 
     isAudioActive = true;
+    isAssistantSpeaking = true;
     ttsAudioTag.innerText = "RIME SPEAKING";
     ttsAudioTag.style.color = "#00e676";
     ttsAudioTag.style.borderColor = "#00e676";
 
     source.onended = () => {
       isAudioActive = false;
+      isAssistantSpeaking = false;
       ttsAudioTag.innerText = "READY";
       ttsAudioTag.style.color = "var(--accent-cyan)";
       ttsAudioTag.style.borderColor = "rgba(0, 229, 255, 0.2)";
@@ -256,6 +260,7 @@ async function playAudioResponse(arrayBuffer) {
     source.start(0);
   } catch (err) {
     isAudioActive = false;
+    isAssistantSpeaking = false;
     ttsAudioTag.innerText = "READY";
   }
 }
@@ -264,7 +269,12 @@ async function playAudioResponse(arrayBuffer) {
 // Execute Laboratory Voice Command
 // ==============================================================================
 async function executeVoiceCommand(transcript) {
-  transcriptDisplay.innerText = `"${transcript}"`;
+  if (transcriptDisplay) {
+    transcriptDisplay.innerHTML = `<span style="color:#00e5ff;font-weight:700;">"${transcript}"</span>`;
+  }
+  if (micSubtext) {
+    micSubtext.innerHTML = `Executing spoken command: <strong style="color:#00e5ff;">"${transcript}"</strong>`;
+  }
   responseDisplay.innerText = "Executing command across cleanroom relays...";
   responseDisplay.style.color = "var(--text-primary)";
   isAudioActive = true;
@@ -282,10 +292,16 @@ async function executeVoiceCommand(transcript) {
       const lat = result.barge_in_metrics ? result.barge_in_metrics.cutoff_latency_ms : 0.1;
       responseDisplay.innerText = `[EMERGENCY ABORT] All hardware actions stopped in ${lat} ms. Rollback verified.`;
       responseDisplay.style.color = "#ff5252";
+      if (micSubtext) {
+        micSubtext.innerHTML = `<span style="color:#ff5252;">🛑 EMERGENCY ABORT TRIGGERED (${lat} ms cutoff)</span>`;
+      }
     } else {
       playCleanroomChime();
       responseDisplay.innerText = `"${result.response_normalized_for_rime || result.response_raw}"`;
       responseDisplay.style.color = "var(--accent-cyan)";
+      if (micSubtext) {
+        micSubtext.innerHTML = `<span style="color:#00e676;">✓ Command executed. Rime TTS speaking response...</span>`;
+      }
 
       // Play synthesized Rime speech
       const ttsResp = await fetch("/api/tts/rime", {
@@ -299,6 +315,7 @@ async function executeVoiceCommand(transcript) {
   } catch (err) {
     responseDisplay.innerText = "Error contacting laboratory gateway.";
     isAudioActive = false;
+    isAssistantSpeaking = false;
   }
 }
 
@@ -312,7 +329,9 @@ let lastExecutedCommand = "";
 function setupSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    if (micSubtext) micSubtext.innerText = "Speech recognition is not natively supported in this browser. Use the voice turn input bar below!";
+    if (micSubtext) {
+      micSubtext.innerHTML = '<span style="color:#ffb74d;">Speech recognition is not natively supported in this browser. Use the Voice Command Input bar below or quick chips!</span>';
+    }
     return null;
   }
 
@@ -332,16 +351,40 @@ function setupSpeechRecognition() {
       micStateLabel.innerHTML = '<span class="pulse-dot"></span> LISTENING... SPEAK NOW';
       micStateLabel.style.color = "#00e676";
     }
-    if (micSubtext) micSubtext.innerText = "Cleanroom mic live! Speak commands like 'Fan high', 'Centrifuge 12000 RPM', 'Timer 30s'.";
+    if (micSubtext) {
+      micSubtext.innerHTML = '🔴 <strong style="color:#00e676;">Cleanroom Mic Live:</strong> Speak commands like <em>"Fan high"</em>, <em>"Centrifuge 12000 RPM"</em>, <em>"Timer 30s"</em>.';
+    }
+    if (transcriptDisplay && !transcriptDisplay.innerText.startsWith('"')) {
+      transcriptDisplay.innerHTML = '<span style="color:#00e676;">🎙️ Live mic recording... Speak laboratory command aloud.</span>';
+    }
+  };
+
+  rec.onspeechstart = () => {
+    isAudioActive = true;
+    if (micSubtext) {
+      micSubtext.innerHTML = '<span style="color:#00e676;font-weight:700;">🎙️ SPEECH DETECTED... LISTENING</span>';
+    }
+  };
+
+  rec.onsoundstart = () => {
+    isAudioActive = true;
+  };
+
+  rec.onsoundend = () => {
+    isAudioActive = false;
   };
 
   rec.onresult = (event) => {
+    if (isAssistantSpeaking) {
+      // Avoid echo feedback while Rime TTS is speaking
+      return;
+    }
+
     let interimText = "";
     let isFinalFlag = false;
 
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const text = event.results[i][0].transcript;
-      interimText += text;
+    for (let i = 0; i < event.results.length; i++) {
+      interimText += event.results[i][0].transcript + " ";
       if (event.results[i].isFinal) {
         isFinalFlag = true;
       }
@@ -350,16 +393,19 @@ function setupSpeechRecognition() {
     interimText = interimText.trim();
     if (!interimText) return;
 
-    // Show live what the mic is picking up in real time
+    // Show live what the mic is picking up in real time immediately in subtitles
     if (transcriptDisplay) {
-      transcriptDisplay.innerText = `"${interimText}"`;
-      transcriptDisplay.style.color = "#00e5ff";
+      transcriptDisplay.innerHTML = `<span style="color:#00e5ff;font-weight:600;">"${interimText}"</span>`;
+    }
+    if (micSubtext) {
+      micSubtext.innerHTML = `🔴 Live Subtitle: <strong style="color:#00e5ff;">"${interimText}"</strong>`;
     }
     isAudioActive = true;
 
     // Clear any existing silence timer
     if (speechSilenceTimeout) {
       clearTimeout(speechSilenceTimeout);
+      speechSilenceTimeout = null;
     }
 
     const triggerCommand = (cmd) => {
@@ -367,16 +413,32 @@ function setupSpeechRecognition() {
       if (!cmd) return;
       if (cmd.toLowerCase() === lastExecutedCommand.toLowerCase()) return;
       lastExecutedCommand = cmd;
-      // Allow repeated commands after 1.8 seconds
       setTimeout(() => { lastExecutedCommand = ""; }, 1800);
-      executeVoiceCommand(cmd);
+
+      // Stop recognition momentarily to reset buffer
+      try {
+        rec.stop();
+      } catch (e) {}
+
+      executeVoiceCommand(cmd).finally(() => {
+        if (isMicListening) {
+          setTimeout(() => {
+            if (isMicListening && !isRecognizing && !isAssistantSpeaking) {
+              try {
+                isRecognizing = true;
+                rec.start();
+              } catch (e) {}
+            }
+          }, 400);
+        }
+      });
     };
 
     // If browser flagged isFinal, commit immediately!
     if (isFinalFlag) {
       triggerCommand(interimText);
     } else {
-      // Crucial: Auto-commit speech after 750ms of silence even if Chrome didn't set isFinal
+      // Auto-commit speech after 750ms of silence even if Chrome didn't set isFinal
       speechSilenceTimeout = setTimeout(() => {
         if (interimText.length > 1) {
           triggerCommand(interimText);
@@ -386,28 +448,40 @@ function setupSpeechRecognition() {
   };
 
   rec.onerror = (e) => {
-    if (e.error === "not-allowed") {
-      if (micSubtext) micSubtext.innerText = "⚠️ Microphone blocked. Click the lock/camera icon in your browser address bar to allow microphone access.";
+    console.warn("Speech recognition notice:", e.error);
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      if (micStateLabel) {
+        micStateLabel.innerText = "MIC PERMISSION BLOCKED";
+        micStateLabel.style.color = "#ff5252";
+      }
+      if (micSubtext) {
+        micSubtext.innerHTML = '<span style="color:#ff5252;font-weight:600;">⚠️ Microphone blocked. Click the lock icon 🔒 in your browser address bar to allow microphone access.</span>';
+      }
+      if (transcriptDisplay) {
+        transcriptDisplay.innerHTML = '<span style="color:#ff5252;">Microphone permission was denied by browser. Please allow microphone access or type commands below.</span>';
+      }
       stopMicrophone();
     } else if (e.error === "network") {
-      if (micSubtext) micSubtext.innerText = "Speech API network notice. Retrying connection...";
-      // Auto-restart on network glitch
-      setTimeout(() => {
-        if (isMicListening) {
-          try { rec.start(); } catch (err) {}
-        }
-      }, 1000);
-    } else if (e.error !== "no-speech") {
-      console.warn("Speech recognition notice:", e.error);
+      if (micSubtext) {
+        micSubtext.innerHTML = '<span style="color:#ffb74d;">Speech network notice. Retrying connection...</span>';
+      }
     }
   };
 
   rec.onend = () => {
-    // Keep continuous listening active while in active speaking state
-    if (isRecognizing && isMicListening) {
-      try {
-        rec.start();
-      } catch (e) {}
+    isRecognizing = false;
+    // Keep continuous listening active with safe backoff
+    if (isMicListening && !isAssistantSpeaking) {
+      setTimeout(() => {
+        if (isMicListening && !isRecognizing && !isAssistantSpeaking) {
+          try {
+            isRecognizing = true;
+            rec.start();
+          } catch (e) {
+            isRecognizing = false;
+          }
+        }
+      }, 300);
     }
   };
 
@@ -416,8 +490,10 @@ function setupSpeechRecognition() {
 
 async function startMicrophone() {
   getAudioContext();
+
+  // Initialize RMS noise gating in background without blocking speech start
   if (!micMediaStream) {
-    await initMicrophoneNoiseGating();
+    initMicrophoneNoiseGating().catch(() => {});
   }
 
   if (!recognition) {
@@ -428,7 +504,9 @@ async function startMicrophone() {
     try {
       isRecognizing = true;
       recognition.start();
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Recognition start fallback:", e);
+    }
   }
 
   isMicListening = true;
@@ -440,7 +518,12 @@ async function startMicrophone() {
     micStateLabel.innerHTML = '<span class="pulse-dot"></span> LISTENING... SPEAK NOW';
     micStateLabel.style.color = "#00e676";
   }
-  if (micSubtext) micSubtext.innerText = "Cleanroom mic live! Speak commands like 'Fan high', 'Centrifuge 12000 RPM', 'Timer 30s'. Tap to mute.";
+  if (micSubtext) {
+    micSubtext.innerHTML = '🔴 <strong style="color:#00e676;">Cleanroom mic live!</strong> Speak commands like <em>"Fan high"</em>, <em>"Centrifuge 12000 RPM"</em>, <em>"Timer 30s"</em>. Tap to mute.';
+  }
+  if (transcriptDisplay) {
+    transcriptDisplay.innerHTML = '<span style="color:#00e676;">🎙️ Live mic recording... Speak laboratory command aloud.</span>';
+  }
   playCleanroomChime();
 }
 
@@ -449,6 +532,7 @@ function stopMicrophone() {
   isMicListening = false;
   if (speechSilenceTimeout) {
     clearTimeout(speechSilenceTimeout);
+    speechSilenceTimeout = null;
   }
   if (recognition) {
     try {
@@ -464,7 +548,9 @@ function stopMicrophone() {
     micStateLabel.innerText = "TAP TO SPEAK MIC";
     micStateLabel.style.color = "var(--accent-cyan)";
   }
-  if (micSubtext) micSubtext.innerText = "Microphone paused. Tap the glowing orb anytime to resume hands-free voice.";
+  if (micSubtext) {
+    micSubtext.innerText = "Microphone paused. Tap the glowing orb anytime to resume hands-free voice.";
+  }
   playCutoffClick();
 }
 

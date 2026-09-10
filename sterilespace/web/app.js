@@ -236,6 +236,7 @@ function handleTimerTelemetry(type, data) {
     playCleanroomChime();
     addLog("TOOL", `Voice Timer Completed: [${timer.id}] ${timer.label}`);
   }
+}
 
 // ==============================================================================
 // Sample Inventory Grid Rendering
